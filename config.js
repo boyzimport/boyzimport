@@ -6,8 +6,8 @@ const CONFIG = {
   // --- Supabase (Project Settings -> API en tu proyecto) ---
   // Si Boys Perfume necesita su PROPIO inventario, crea un proyecto nuevo en
   // Supabase y pega aquí su URL y su anon key. Si no, deja estos.
-  SUPABASE_URL: "https://bmivjmyxzjokyugmhnoo.supabase.co",
-  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtaXZqbXl4empva3l1Z21obm9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMjY2MTIsImV4cCI6MjA5OTkwMjYxMn0.UEiLU29diBJKKfiuadx83h0K-EDVb01KNgzYX7K521Y",
+  SUPABASE_URL: "https://abfnocwlyivocjjzjgtg.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFiZm5vY3dseWl2b2NqanpqZ3RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMzMxOTIsImV4cCI6MjA5OTkwOTE5Mn0.z7LAX0c6cOsAPWE-vTV5N5Uy1m3nkfa35zQoFqhn3oo",
 
   // --- Datos de la tienda ---
   TIENDA_NOMBRE: "Boys Perfume",
