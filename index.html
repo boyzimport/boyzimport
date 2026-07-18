@@ -34,6 +34,10 @@
   .search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted)}
   .cart-btn{position:relative;display:flex;align-items:center;gap:7px;padding:11px 16px;background:var(--gold);color:var(--on-gold);border-radius:100px;font-size:13.5px;font-weight:600;white-space:nowrap}
   .cart-btn:hover{background:var(--gold2)}
+  @keyframes cartpulse{0%{transform:scale(1)}30%{transform:scale(1.18)}60%{transform:scale(.95)}100%{transform:scale(1)}}
+  .cart-btn.pulse{animation:cartpulse .5s ease}
+  .install-btn{padding:11px 14px;border:1px solid var(--gold);color:var(--gold);border-radius:100px;font-size:12.5px;font-weight:600;white-space:nowrap;background:transparent}
+  .install-btn:hover{background:var(--gold);color:var(--on-gold)}
   .cart-btn .count{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;background:var(--on-gold);color:var(--gold);border-radius:100px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
 
   .hero{max-width:1160px;margin:0 auto;padding:44px 20px 14px;text-align:center;position:relative}
@@ -178,8 +182,22 @@
   .cart-tip{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin:0 0 8px;font-size:12px;color:var(--ink)}
   .cart-tip.ok{background:rgba(42,174,121,.14);border-color:rgba(42,174,121,.5);color:#7fe7bd}
   .cart-tip span{color:var(--muted)}
+  .ochips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 14px}
+  .ochip{font-size:11.5px;font-weight:600;padding:6px 10px;border-radius:100px;border:1px solid var(--line);background:var(--surface2);color:var(--muted)}
+  .ochip small{font-weight:500;opacity:.85}
+  .ochip.avail{border-color:var(--gold);color:var(--gold)}
+  .ochip.hint{border-color:var(--gold);color:var(--gold)}
+  .ochip.on{background:rgba(42,174,121,.16);border-color:rgba(42,174,121,.55);color:#7fe7bd}
+  .ochip.off{opacity:.4}
+  #offerBar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:50;align-items:center;gap:8px;max-width:calc(100% - 28px);padding:12px 18px;border-radius:100px;border:none;background:linear-gradient(135deg,var(--gold2),var(--gold));color:var(--on-gold);font-size:12.5px;font-weight:600;box-shadow:0 12px 32px rgba(2,12,24,.55);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #offerBar b{font-weight:800}
+  #offerBar .ob-c{font-weight:800}
+  @media(min-width:900px){ #offerBar{left:auto;right:24px;transform:none} }
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#071827">
+<link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
 <header>
@@ -189,6 +207,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       <input id="search" type="search" placeholder="Buscar perfume…" autocomplete="off" />
     </div>
+    <button id="installBtn" class="install-btn" style="display:none">⇩ Instalar app</button>
     <button class="cart-btn" id="cartBtn">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
       <span class="lbl">Carrito</span><span class="count" id="cartCount" style="display:none">0</span>
@@ -253,6 +272,8 @@
 <div class="modal" id="modal"><div class="modal-box" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
 
+<button id="offerBar" onclick="openCart()" style="display:none"></button>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script>
@@ -283,6 +304,7 @@ let PRODUCTS=[], PROMOS=[], cart=JSON.parse(localStorage.getItem('cart_'+CONFIG.
 let fCat='todos', fGen='todos', fMom='todos', q='';
 let PRICE_MODE='min';
 const MAYOR_MIN = Number(CONFIG.MAYOR_MIN)||3;
+const ESCALA_MINS_C=[6,10,12,20,50,100];
 /* ===== MOTOR DE PRECIOS (compartido catálogo/POS) ===== */
 function _promosVigentes(PROMOS){
   const hoy=new Date().toISOString().slice(0,10);
@@ -294,12 +316,14 @@ function _unitPrice(prod,tamano,ctx){
   const u0=Number(pres.precio)||0; let best=u0, src='';
   const may=Number(pres.precio_may)||0;
   if(ctx.totalUnits>=ctx.MAYOR_MIN && may>0 && may<best){ best=may; src='Precio por mayor'; }
+  const esc=(pres.escala||[]);
   (ctx.escalas||[]).forEach(pr=>{
-    const c=pr.config||{}; let rel;
-    if(c.alcance==='producto'){ if(!(c.productos||[]).includes(prod.nombre)) return; rel=ctx.qtyByName[prod.nombre]||0; }
+    const c=pr.config||{}; let rel, applies=true;
+    if(c.alcance==='producto'){ applies=(c.productos||[]).includes(prod.nombre); rel=ctx.qtyByName[prod.nombre]||0; }
     else rel=ctx.totalUnits;
-    let tp=null; (c.tiers||[]).slice().sort((a,b)=>Number(a.min)-Number(b.min)).forEach(t=>{ if(rel>=Number(t.min)&&Number(t.precio)>0) tp=Number(t.precio); });
-    if(tp!==null && tp<best){ best=tp; src=pr.nombre; }
+    if(!applies) return;
+    const niveles=(c.niveles&&c.niveles.length)?c.niveles.map(Number):null;
+    esc.forEach(t=>{ const m=Number(t.min), p=Number(t.precio)||0; if(p<=0) return; if(niveles&&!niveles.includes(m)) return; if(rel>=m && p<best){ best=p; src='x'+m; } });
   });
   return {u0,best:Math.round(best*100)/100,src};
 }
@@ -482,6 +506,7 @@ function openModal(id){
         <div class="m-price" id="mPrice">${p0.precio<p0.original?`<span class="price-old">${money(p0.original)}</span>`:''}${money(p0.precio)}${p0.tamano&&p0.tamano!=='Sellado'?`<small>${esc(p0.tamano)}</small>`:''}</div>
       </div>
       ${p.descripcion?`<p class="m-desc">${fmtDesc(p.descripcion)}</p>`:''}
+      ${offerChips(p)}
       ${eff.length>1?`<div class="m-sizes-lbl">Elige tu presentación</div><div class="sizes">${sizes}</div>`:''}
       <div class="m-actions">
         <button class="btn-add" onclick="addSelected()">
@@ -524,7 +549,7 @@ function addToCart(p,tamano,stk){
   const max=(stk===undefined||stk===Infinity||stk===null)?Infinity:Number(stk);
   if(it){ if(it.qty+1>max){ toast('Solo hay '+max+' en stock'); return; } it.qty++; }
   else cart.push({key,id:p.id,nombre:p.nombre,marca:p.marca,tamano,pu,pm,imagen_url:p.imagen_url,qty:1,stk:(max===Infinity?null:max)});
-  saveCart(); renderCart(); notifyMayor();
+  saveCart(); renderCart(); notifyMayor(); pulseCart();
 }
 function mayorInfo(){
   const u=cart.reduce((s,i)=>s+i.qty,0), M=MAYOR_MIN, active=u>=M;
@@ -543,14 +568,15 @@ function mayorBanner(){
 function notifyMayor(){ const {u,txt}=mayorInfo(); if(u<=0) return; toast(txt.replace('✓ ','')); }
 function cartNotices(){
   const r=computeCart(); let h='';
-  r.escalas.filter(p=>(p.config||{}).alcance!=='producto').forEach(pr=>{
-    const tiers=((pr.config||{}).tiers||[]).slice().sort((a,b)=>a.min-b.min);
-    const next=tiers.find(t=>r.totalUnits<Number(t.min));
-    if(next) h+=`<div class="cart-tip">Agrega ${next.min-r.totalUnits} y cada perfume baja a ${money(next.precio)} <span>· ${esc(pr.nombre)}</span></div>`;
-  });
+  const mez=r.escalas.filter(p=>(p.config||{}).alcance!=='producto');
+  if(mez.length){
+    const act=new Set(); mez.forEach(pr=>((pr.config||{}).niveles||ESCALA_MINS_C).forEach(m=>act.add(Number(m))));
+    const next=[...act].sort((a,b)=>a-b).find(m=>r.totalUnits<m);
+    if(next) h+=`<div class="cart-tip">Agrega ${next-r.totalUnits} y los perfumes bajan al nivel x${next}</div>`;
+  }
   r.escalas.filter(p=>(p.config||{}).alcance==='producto').forEach(pr=>{
-    const c=pr.config||{}; const tiers=(c.tiers||[]).slice().sort((a,b)=>a.min-b.min);
-    (c.productos||[]).forEach(n=>{ const q=r.qtyByName[n]||0; if(!q) return; const next=tiers.find(t=>q<Number(t.min)); if(next) h+=`<div class="cart-tip">${esc(n)}: con ${next.min-q} más, c/u a ${money(next.precio)}</div>`; });
+    const c=pr.config||{}; const niveles=(c.niveles||ESCALA_MINS_C).map(Number).sort((a,b)=>a-b);
+    (c.productos||[]).forEach(n=>{ const q=r.qtyByName[n]||0; if(!q) return; const nx=niveles.find(m=>q<m); if(nx) h+=`<div class="cart-tip">${esc(n)}: con ${nx-q} más llega al nivel x${nx}</div>`; });
   });
   r.combos.forEach(pr=>{
     const c=pr.config||{}, L=c.productos||[]; if(L.length<2) return;
@@ -560,27 +586,62 @@ function cartNotices(){
   });
   return h;
 }
+function activeEscalaMins(nombre){
+  const set=new Set();
+  _promosVigentes(PROMOS).filter(p=>p.tipo==='cantidad').forEach(pr=>{
+    const c=pr.config||{};
+    const applies=c.alcance==='producto'?(c.productos||[]).includes(nombre):true;
+    if(!applies) return;
+    (c.niveles&&c.niveles.length?c.niveles:ESCALA_MINS_C).forEach(m=>set.add(Number(m)));
+  });
+  return set;
+}
+function offerChips(p){
+  const pr0=(p.presentaciones||[])[0]||{}; if(!pr0.precio) return '';
+  const act=activeEscalaMins(p.nombre); const u=cart.reduce((s,i)=>s+i.qty,0);
+  let chips=[`<span class="ochip">1u ${money(pr0.precio)}</span>`];
+  if(pr0.precio_may) chips.push(`<span class="ochip ${u>=MAYOR_MIN?'on':'hint'}">x${MAYOR_MIN} ${money(pr0.precio_may)} <small>${u>=MAYOR_MIN?'activo':'por mayor'}</small></span>`);
+  (pr0.escala||[]).forEach(t=>{ const on=act.has(Number(t.min)); const reached=u>=t.min; chips.push(`<span class="ochip ${on?(reached?'on':'avail'):'off'}">x${t.min} ${money(t.precio)}${on&&!reached?` <small>faltan ${t.min-u}</small>`:''}</span>`); });
+  return `<div class="ochips">${chips.join('')}</div>`;
+}
+function offerBarText(){
+  const u=cart.reduce((s,i)=>s+i.qty,0); if(u<=0) return '';
+  if(u<MAYOR_MIN) return `Agrega ${MAYOR_MIN-u} para el precio por mayor`;
+  let nextMin=null;
+  cart.forEach(it=>{ const set=activeEscalaMins(it.nombre); const prod=PRODUCTS.find(x=>x.id===it.id); const esc=prod?(((prod.presentaciones||[])[0]||{}).escala||[]):[]; esc.forEach(t=>{ if(set.has(Number(t.min))&&u<t.min){ if(nextMin===null||t.min<nextMin) nextMin=t.min; } }); });
+  if(nextMin) return `Agrega ${nextMin-u} para el nivel x${nextMin}`;
+  return '✓ Precio por mayor activo';
+}
+function updateOfferBar(){
+  const bar=document.getElementById('offerBar'); if(!bar) return;
+  if(!cart.length){ bar.style.display='none'; return; }
+  const r=computeCart(); const hint=offerBarText();
+  bar.style.display='inline-flex';
+  bar.innerHTML=`<span class="ob-c">🛒 ${r.totalUnits}</span> <b>${money(r.total)}</b>${hint?` · <span class="ob-h">${hint}</span>`:''}`;
+}
+function pulseCart(){ const cb=document.getElementById('cartBtn'); if(!cb) return; cb.classList.remove('pulse'); void cb.offsetWidth; cb.classList.add('pulse'); }
 function renderLadderInfo(){
   const el=document.getElementById('ladderInfo'); if(!el) return;
   const vig=_promosVigentes(PROMOS);
-  const mez=vig.filter(p=>p.tipo==='cantidad'&&(p.config||{}).alcance!=='producto');
+  const cant=vig.filter(p=>p.tipo==='cantidad');
   const combos=vig.filter(p=>p.tipo==='combo');
-  let tiers=[]; mez.forEach(pr=>{ ((pr.config||{}).tiers||[]).slice().sort((a,b)=>a.min-b.min).forEach(t=>tiers.push(`x${t.min} ${money(t.precio)} c/u`)); });
+  const act=new Set(); cant.forEach(pr=>((pr.config||{}).niveles||[]).forEach(m=>act.add(Number(m))));
+  const niveles=[...act].sort((a,b)=>a-b).map(m=>'x'+m);
   const comboTxt=combos.map(pr=>`${esc(pr.nombre)}: ${((pr.config||{}).productos||[]).map(esc).join(' + ')} = ${money((pr.config||{}).precio)}`);
-  if(!tiers.length && !comboTxt.length){ el.innerHTML=''; return; }
+  if(!niveles.length && !comboTxt.length){ el.innerHTML=''; return; }
   let h='<div class="ladder">';
-  if(tiers.length) h+=`<b>Precios por cantidad:</b> desde ${MAYOR_MIN} precio por mayor · ${tiers.join(' · ')}`;
-  if(comboTxt.length) h+=`${tiers.length?'<br>':''}<b>Packs:</b> ${comboTxt.join(' · ')}`;
+  if(niveles.length) h+=`<b>Mientras más llevas, más barato:</b> desde ${MAYOR_MIN} por mayor · ${niveles.join(' · ')} <span style="opacity:.7">(precio según el perfume)</span>`;
+  if(comboTxt.length) h+=`${niveles.length?'<br>':''}<b>Packs:</b> ${comboTxt.join(' · ')}`;
   h+='</div>'; el.innerHTML=h;
 }
-function changeQty(key,d){ const it=cart.find(x=>x.key===key); if(!it) return; const max=(it.stk===undefined||it.stk===null)?Infinity:Number(it.stk); if(d>0&&it.qty+1>max){ toast('Solo hay '+max+' en stock'); return; } it.qty+=d; if(it.qty<=0) cart=cart.filter(x=>x.key!==key); saveCart(); renderCart(); if(d>0) notifyMayor(); }
+function changeQty(key,d){ const it=cart.find(x=>x.key===key); if(!it) return; const max=(it.stk===undefined||it.stk===null)?Infinity:Number(it.stk); if(d>0&&it.qty+1>max){ toast('Solo hay '+max+' en stock'); return; } it.qty+=d; if(it.qty<=0) cart=cart.filter(x=>x.key!==key); saveCart(); renderCart(); if(d>0){ notifyMayor(); pulseCart(); } }
 function removeItem(key){ cart=cart.filter(x=>x.key!==key); saveCart(); renderCart(); }
 function renderCart(){
   const r=computeCart();
   const n=cart.reduce((s,i)=>s+i.qty,0);
   const badge=document.getElementById('cartCount'); badge.textContent=n; badge.style.display=n?'flex':'none';
   const box=document.getElementById('cartItems'); const foot=document.getElementById('cartFoot');
-  if(!cart.length){ box.innerHTML='<div class="cart-empty"><span class="serif">Tu pedido está vacío</span>Elige un perfume y su talla.</div>'; foot.style.display='none'; return; }
+  if(!cart.length){ box.innerHTML='<div class="cart-empty"><span class="serif">Tu pedido está vacío</span>Elige un perfume y su talla.</div>'; foot.style.display='none'; updateOfferBar(); return; }
   foot.style.display='block';
   box.innerHTML=mayorBanner()+cartNotices()+r.lines.map(l=>{
     const img=l.imagen_url?`<img class="ci-img" src="${l.imagen_url}" alt="">`:`<div class="ci-img">${noimg}</div>`;
@@ -595,6 +656,7 @@ function renderCart(){
     </div>`;
   }).join('') + (r.comboDisc.length?`<div style="padding:10px 0 2px">${r.comboDisc.map(c=>`<div class="promo-line"><span>🎁 ${esc(c.nombre)}</span><span>- ${money(c.monto)}</span></div>`).join('')}</div>`:'');
   document.getElementById('cartTotal').textContent=money(r.total);
+  updateOfferBar();
 }
 function openCart(){ document.getElementById('overlay').classList.add('on'); document.getElementById('drawer').classList.add('on'); }
 function closeCart(){ document.getElementById('overlay').classList.remove('on'); document.getElementById('drawer').classList.remove('on'); }
@@ -625,6 +687,11 @@ document.getElementById('pmMin').textContent=CONFIG.LABEL_MINORISTA||'Minorista'
 document.getElementById('pmMay').textContent=CONFIG.LABEL_MAYORISTA||'Mayorista';
 document.getElementById('pmNote').textContent=pmNoteText();
 renderCart(); load();
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredPrompt=e; const b=document.getElementById('installBtn'); if(b) b.style.display='inline-flex'; });
+{ const _ib=document.getElementById('installBtn'); if(_ib) _ib.onclick=async()=>{ if(!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; _ib.style.display='none'; }; }
+window.addEventListener('appinstalled',()=>{ const b=document.getElementById('installBtn'); if(b) b.style.display='none'; });
 </script>
 </body>
 </html>

@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{--bg:#071827;--bg2:#0B2236;--surface:#0E2A41;--surface2:#143A58;--ink:#EAF3FA;--muted:#8FB0C9;--gold:#2F92CF;--gold2:#49A8DE;--gold-deep:#1C6FA6;--on-gold:#04121F;--line:#1C3E5C;--line2:rgba(73,168,222,.28);--ok:#2AAE79;--err:#E5675F}
+  #installBtnA{position:fixed;left:16px;bottom:16px;z-index:70;display:none;padding:11px 16px;border:1px solid var(--gold);background:var(--bg2);color:var(--gold);border-radius:100px;font-size:12.5px;font-weight:600;box-shadow:0 8px 24px rgba(2,12,24,.5);cursor:pointer}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
   button{font-family:inherit;cursor:pointer;border:none}
@@ -166,8 +167,12 @@
   .subhint{font-size:11.5px;color:var(--muted);margin:-4px 0 12px;line-height:1.4}
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
+<link rel="manifest" href="manifest-admin.webmanifest">
+<meta name="theme-color" content="#071827">
+<link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
+<button id="installBtnA">⇩ Instalar app</button>
 
 <div class="login-wrap" id="loginWrap">
   <div class="login">
@@ -219,13 +224,25 @@
       </div>
 
       <div class="sec-line"></div>
-      <div class="pres-title">Precios y stock (perfume sellado)</div>
+      <div class="pres-title">Precios por cantidad (perfume sellado)</div>
       <div class="two">
-        <div class="field"><label>Minorista * (S/)</label><input id="f_precio" type="number" step="0.01" placeholder="0.00" /></div>
-        <div class="field"><label>Mayorista (S/)</label><input id="f_precio_may" type="number" step="0.01" placeholder="0.00" /></div>
+        <div class="field"><label>Precio unidad * (S/)</label><input id="f_precio" type="number" step="0.01" placeholder="0.00" /></div>
+        <div class="field"><label>x3 · por mayor (S/)</label><input id="f_precio_may" type="number" step="0.01" placeholder="—" /></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>x6 (S/)</label><input id="f_t6" type="number" step="0.01" placeholder="—" /></div>
+        <div class="field"><label>x10 (S/)</label><input id="f_t10" type="number" step="0.01" placeholder="—" /></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>x12 (S/)</label><input id="f_t12" type="number" step="0.01" placeholder="—" /></div>
+        <div class="field"><label>x20 (S/)</label><input id="f_t20" type="number" step="0.01" placeholder="—" /></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>x50 (S/)</label><input id="f_t50" type="number" step="0.01" placeholder="—" /></div>
+        <div class="field"><label>x100 (S/)</label><input id="f_t100" type="number" step="0.01" placeholder="—" /></div>
       </div>
       <div class="field"><label>Stock (unidades)</label><input id="f_stock2" type="number" min="0" step="1" placeholder="Vacío = sin control (∞)" /></div>
-      <div class="pres-hint">El precio <b>mayorista</b> es opcional. En <b>Stock</b>: vacío = sin control (∞) y <b>0</b> = "Agotado" en el catálogo.</div>
+      <div class="pres-hint">Pon el <b>precio unidad</b> (obligatorio) y los que uses por cantidad. El <b>x3</b> se aplica solo al llevar 3+. Los <b>x6+</b> se aplican solo si tienes una promo "Precio por cantidad" activa. Stock: vacío = ∞, 0 = "Agotado".</div>
 
       <div class="sec-line"></div>
       <div class="check"><input type="checkbox" id="f_dest" /><label for="f_dest">Destacado (aparece primero)</label></div>
@@ -335,6 +352,9 @@ function readPres(){
   const may=$('f_precio_may').value, st=$('f_stock2').value;
   const o={ tamano:'Sellado', precio:Number(v), activo:true };
   if(may&&Number(may)>0) o.precio_may=Number(may);
+  const esc=[];
+  [6,10,12,20,50,100].forEach(m=>{ const val=$('f_t'+m).value; if(val&&Number(val)>0) esc.push({min:m,precio:Number(val)}); });
+  if(esc.length) o.escala=esc;
   o.stock=(st===''||st===null||st===undefined)?null:Math.max(0,parseInt(st)||0);
   return [o];
 }
@@ -342,6 +362,8 @@ function fillPres(arr){
   const p=(arr||[])[0]||null;
   $('f_precio').value = p?p.precio:'';
   $('f_precio_may').value = (p&&p.precio_may)?p.precio_may:'';
+  const map={}; ((p&&p.escala)||[]).forEach(t=>map[t.min]=t.precio);
+  [6,10,12,20,50,100].forEach(m=>{ $('f_t'+m).value = (map[m]!==undefined?map[m]:''); });
   $('f_stock2').value = (p&&p.stock!==null&&p.stock!==undefined)?p.stock:'';
 }
 
@@ -371,9 +393,10 @@ async function loadProducts(){
 function resumenPres(p){
   const x=(p.presentaciones||[])[0];
   if(!x) return '<span style="color:var(--err)">sin precio</span>';
-  const may=x.precio_may?` <span style="color:var(--muted)">/ may ${money(x.precio_may)}</span>`:'';
+  const may=x.precio_may?` · x3 ${money(x.precio_may)}`:'';
+  const esc=(x.escala||[]).map(t=>`x${t.min} ${money(t.precio)}`).join(' · ');
   const st=(x.stock===null||x.stock===undefined)?'':` <span style="color:${Number(x.stock)<=0?'var(--err)':'var(--muted)'}">· stock ${x.stock}</span>`;
-  return `${money(x.precio)}${may}${st}`;
+  return `${money(x.precio)}${may}${esc?' · '+esc:''}${st}`;
 }
 function renderList(){
   const q=$('listSearch').value.toLowerCase().trim();
@@ -488,6 +511,7 @@ const TIPOS_PROMO=[
 ];
 let PROMOS=[], promoTipo='cantidad';
 const MAYOR_MIN = Number(CONFIG.MAYOR_MIN)||3;
+const ESCALA_MINS=[6,10,12,20,50,100];
 
 /* ===== MOTOR DE PRECIOS (compartido catálogo/POS) ===== */
 function _promosVigentes(PROMOS){
@@ -500,12 +524,14 @@ function _unitPrice(prod,tamano,ctx){
   const u0=Number(pres.precio)||0; let best=u0, src='';
   const may=Number(pres.precio_may)||0;
   if(ctx.totalUnits>=ctx.MAYOR_MIN && may>0 && may<best){ best=may; src='Precio por mayor'; }
+  const esc=(pres.escala||[]);
   (ctx.escalas||[]).forEach(pr=>{
-    const c=pr.config||{}; let rel;
-    if(c.alcance==='producto'){ if(!(c.productos||[]).includes(prod.nombre)) return; rel=ctx.qtyByName[prod.nombre]||0; }
+    const c=pr.config||{}; let rel, applies=true;
+    if(c.alcance==='producto'){ applies=(c.productos||[]).includes(prod.nombre); rel=ctx.qtyByName[prod.nombre]||0; }
     else rel=ctx.totalUnits;
-    let tp=null; (c.tiers||[]).slice().sort((a,b)=>Number(a.min)-Number(b.min)).forEach(t=>{ if(rel>=Number(t.min)&&Number(t.precio)>0) tp=Number(t.precio); });
-    if(tp!==null && tp<best){ best=tp; src=pr.nombre; }
+    if(!applies) return;
+    const niveles=(c.niveles&&c.niveles.length)?c.niveles.map(Number):null;
+    esc.forEach(t=>{ const m=Number(t.min), p=Number(t.precio)||0; if(p<=0) return; if(niveles&&!niveles.includes(m)) return; if(rel>=m && p<best){ best=p; src='x'+m; } });
   });
   return {u0,best:Math.round(best*100)/100,src};
 }
@@ -560,23 +586,15 @@ function prodPickHTML(){
   const nombres=[...new Set(PRODUCTS.map(p=>p.nombre))].sort();
   return `<div class="prodpick" id="promoProds">${nombres.map(n=>`<label><input type="checkbox" value="${esc(n)}"> ${esc(n)}</label>`).join('')||'<div style="color:var(--muted);padding:8px">No hay productos aún</div>'}</div>`;
 }
-function addTierRow(min,precio){
-  const box=document.getElementById('pf_tiers'); if(!box) return;
-  const row=document.createElement('div'); row.className='tier-row';
-  row.innerHTML=`<input class="tmin" type="number" min="1" step="1" placeholder="cant. (ej. 6)" value="${min||''}"><span>→ ${CONFIG.MONEDA}</span><input class="tprc" type="number" step="0.01" placeholder="precio c/u" value="${precio||''}"><button type="button" class="tier-rm">✕</button>`;
-  row.querySelector('.tier-rm').onclick=()=>row.remove();
-  box.appendChild(row);
-}
 function renderPromoFields(){
   const el=document.getElementById('promoFields'); let h='';
   if(promoTipo==='cantidad'){
     h=`<div class="subfield"><label>¿Cómo se cuenta la cantidad?</label>
          <select id="pf_alcance"><option value="mezclado">Mezclado (total de perfumes)</option><option value="producto">Por perfume (el mismo perfume)</option></select></div>
        <div class="subfield" id="pf_prodwrap" style="display:none"><label>Perfumes que aplican</label>${prodPickHTML()}</div>
-       <div class="subfield"><label>Niveles de cantidad → precio por unidad</label>
-         <div id="pf_tiers"></div>
-         <button type="button" class="cancel" id="pf_addtier" style="display:block;margin-top:6px">+ Agregar nivel</button></div>
-       <div class="subhint">Ej.: x6 → S/70, x10 → S/65 (precio de cada perfume). El x3 (precio por mayor) ya es automático.</div>`;
+       <div class="subfield"><label>Niveles que se activan</label>
+         <div class="tallapick" id="pf_niveles">${ESCALA_MINS.map(m=>`<label><input type="checkbox" value="${m}" checked> x${m}</label>`).join('')}</div></div>
+       <div class="subhint">El <b>precio</b> de cada nivel se toma de cada perfume (lo pones al crear/editar el producto). El x3 (por mayor) ya es automático — aquí activas x6, x10, etc.</div>`;
   } else if(promoTipo==='combo'){
     h=`<div class="subfield"><label>Perfumes que forman el pack</label>${prodPickHTML()}</div>
        <div class="subfield"><label>Precio total del pack ${CONFIG.MONEDA}</label><input id="pf_ptotal" type="number" step="0.01" placeholder="Ej. 200"></div>
@@ -586,8 +604,6 @@ function renderPromoFields(){
   if(promoTipo==='cantidad'){
     const alc=document.getElementById('pf_alcance');
     alc.onchange=()=>{ document.getElementById('pf_prodwrap').style.display=alc.value==='producto'?'block':'none'; };
-    document.getElementById('pf_addtier').onclick=()=>addTierRow();
-    addTierRow();
   }
 }
 function getChecked(id){ const box=document.getElementById(id); if(!box) return []; return [...box.querySelectorAll('input:checked')].map(i=>i.value); }
@@ -596,14 +612,14 @@ function setChecked(id,vals){ const box=document.getElementById(id); if(!box) re
 function buildPromoConfig(){
   if(promoTipo==='cantidad'){
     const alcance=document.getElementById('pf_alcance').value;
-    const tiers=[...document.querySelectorAll('#pf_tiers .tier-row')].map(r=>({min:+r.querySelector('.tmin').value||0,precio:+r.querySelector('.tprc').value||0})).filter(t=>t.min>0&&t.precio>0).sort((a,b)=>a.min-b.min);
-    return {alcance, productos:alcance==='producto'?getChecked('promoProds'):[], tiers};
+    const niveles=[...document.querySelectorAll('#pf_niveles input:checked')].map(i=>+i.value);
+    return {alcance, productos:alcance==='producto'?getChecked('promoProds'):[], niveles};
   }
   if(promoTipo==='combo'){ return {productos:getChecked('promoProds'), precio:+document.getElementById('pf_ptotal').value||0}; }
   return {};
 }
 function validarPromo(cfg){
-  if(promoTipo==='cantidad'){ if(!cfg.tiers.length) return 'Agrega al menos un nivel (cantidad y precio).'; if(cfg.alcance==='producto'&&!cfg.productos.length) return 'Elige los perfumes que aplican.'; return ''; }
+  if(promoTipo==='cantidad'){ if(!cfg.niveles.length) return 'Elige al menos un nivel (x6, x10…).'; if(cfg.alcance==='producto'&&!cfg.productos.length) return 'Elige los perfumes que aplican.'; return ''; }
   if(promoTipo==='combo'){ if((cfg.productos||[]).length<2) return 'Elige al menos 2 perfumes para el pack.'; if(!(cfg.precio>0)) return 'Pon el precio total del pack.'; return ''; }
   return '';
 }
@@ -639,7 +655,7 @@ async function loadPromos(){
 }
 function promoResumen(p){
   const c=p.config||{};
-  if(p.tipo==='cantidad'){ const t=(c.tiers||[]).map(x=>`x${x.min}: ${CONFIG.MONEDA} ${x.precio}`).join(' · '); return `${c.alcance==='producto'?'Por perfume ('+(c.productos||[]).length+')':'Mezclado'} — ${t||'sin niveles'}`; }
+  if(p.tipo==='cantidad'){ const n=(c.niveles||[]).map(m=>'x'+m).join(', '); return `${c.alcance==='producto'?'Por perfume ('+(c.productos||[]).length+')':'Mezclado'} — niveles ${n||'—'}`; }
   if(p.tipo==='combo'){ return `${(c.productos||[]).join(' + ')} = ${CONFIG.MONEDA} ${c.precio}`; }
   return '';
 }
@@ -682,9 +698,8 @@ function editPromo(id){
     document.getElementById('pf_alcance').value=c.alcance||'mezclado';
     document.getElementById('pf_alcance').dispatchEvent(new Event('change'));
     setChecked('promoProds',c.productos);
-    document.getElementById('pf_tiers').innerHTML='';
-    (c.tiers||[]).forEach(t=>addTierRow(t.min,t.precio));
-    if(!(c.tiers||[]).length) addTierRow();
+    const set=new Set((c.niveles||[]).map(String));
+    document.querySelectorAll('#pf_niveles input').forEach(i=>i.checked=set.has(i.value));
   }
   if(p.tipo==='combo'){ setChecked('promoProds',c.productos); document.getElementById('pf_ptotal').value=c.precio||''; }
   document.getElementById('promoFormTitle').textContent='Editar promoción';
@@ -814,6 +829,12 @@ $('v_prod').onchange=vFillSizes;
 $('v_size').onchange=vSizeHint;
 $('v_add').onclick=vAddItem;
 $('v_save').onclick=registrarVenta;
+
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+let deferredPromptA=null;
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredPromptA=e; const b=document.getElementById('installBtnA'); if(b) b.style.display='block'; });
+{ const _iba=document.getElementById('installBtnA'); if(_iba) _iba.onclick=async()=>{ if(!deferredPromptA) return; deferredPromptA.prompt(); await deferredPromptA.userChoice; deferredPromptA=null; _iba.style.display='none'; }; }
+window.addEventListener('appinstalled',()=>{ const b=document.getElementById('installBtnA'); if(b) b.style.display='none'; });
 
 checkSession();
 </script>
