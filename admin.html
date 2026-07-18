@@ -121,6 +121,17 @@
   .vhoy-card .vh-sub{color:var(--muted);font-size:12px;margin-top:3px;line-height:1.4}
   .vhoy-total{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0 16px;border-bottom:1px solid var(--line);margin-bottom:14px}
   .vhoy-total b{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--gold)}
+  .v-promo-note{font-size:12px;color:var(--gold);font-weight:600;margin:8px 0 2px;min-height:14px}
+  .vh-acts{display:flex;gap:6px;margin-top:9px}
+  .vh-acts button{padding:5px 11px;border:1px solid var(--line);border-radius:8px;font-size:11.5px;color:var(--ink)}
+  .vh-acts button:hover{border-color:var(--gold)}
+  .vh-acts .del{color:var(--err)}
+  .vh-acts .del:hover{border-color:var(--err)}
+  .tier-row{display:grid;grid-template-columns:1fr auto 1fr auto;gap:6px;align-items:center;margin-bottom:6px}
+  .tier-row input{padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--ink);font-size:13px;outline:none}
+  .tier-row input:focus{border-color:var(--gold)}
+  .tier-row span{font-size:12px;color:var(--muted)}
+  .tier-row .tier-rm{background:none;border:1px solid var(--line);border-radius:8px;color:var(--err);width:34px;height:34px;cursor:pointer}
   /* Promo tipos */
   .promo-types{display:grid;grid-template-columns:1fr 1fr;gap:7px}
   .promo-types button{padding:11px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg2);color:var(--ink);font-size:12.5px;font-weight:500;text-align:left;line-height:1.3}
@@ -273,12 +284,6 @@
     <div class="layout">
       <div class="panel">
         <h2>Registrar venta</h2>
-        <div class="field"><label>Tipo de venta</label>
-          <div class="vtipo" id="v_tipo">
-            <button class="on" data-t="min" type="button">Minorista</button>
-            <button data-t="may" type="button">Mayorista</button>
-          </div>
-        </div>
         <div class="field"><label>Producto</label>
           <select id="v_prod"><option value="">— Elige producto —</option></select>
         </div>
@@ -291,6 +296,7 @@
 
         <div class="sec-line"></div>
         <div id="v_items"></div>
+        <div class="v-promo-note" id="v_promoNote"></div>
         <div class="vtotal"><span class="serif">Total</span><b id="v_total">S/ 0</b></div>
 
         <div class="field"><label>Cliente (opcional)</label><input id="v_cliente" placeholder="Nombre del cliente" /></div>
@@ -477,13 +483,61 @@ function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>
 
 /* ================= PROMOCIONES ================= */
 const TIPOS_PROMO=[
-  ['producto','🏷️','Descuento en productos','% de descuento en los perfumes que elijas'],
-  ['cantidad','🔢','Precio por cantidad','Llevando X del mismo, precio más bajo'],
-  ['combo','🎁','Combo / pack','Lleva N a elección por un precio fijo'],
-  ['general','🌟','Descuento general','% a una categoría o a todo el catálogo']
+  ['cantidad','🔢','Precio por cantidad','Niveles x6, x10… precio por unidad'],
+  ['combo','🎁','Combo pack','Perfumes juntos por un precio total']
 ];
-const TALLAS_PROMO=['3ml','5ml','10ml','30ml','Sellado'];
-let PROMOS=[], promoTipo='producto';
+let PROMOS=[], promoTipo='cantidad';
+const MAYOR_MIN = Number(CONFIG.MAYOR_MIN)||3;
+
+/* ===== MOTOR DE PRECIOS (compartido catálogo/POS) ===== */
+function _promosVigentes(PROMOS){
+  const hoy=new Date().toISOString().slice(0,10);
+  return (PROMOS||[]).filter(p=>p.activo && (!p.desde||hoy>=p.desde) && (!p.hasta||hoy<=p.hasta));
+}
+function _firstTamano(prod){ const a=(prod.presentaciones||[]).filter(x=>x&&Number(x.precio)>0); return a[0]?a[0].tamano:'Sellado'; }
+function _unitPrice(prod,tamano,ctx){
+  const pres=(prod.presentaciones||[]).find(x=>x.tamano===tamano)||{};
+  const u0=Number(pres.precio)||0; let best=u0, src='';
+  const may=Number(pres.precio_may)||0;
+  if(ctx.totalUnits>=ctx.MAYOR_MIN && may>0 && may<best){ best=may; src='Precio por mayor'; }
+  (ctx.escalas||[]).forEach(pr=>{
+    const c=pr.config||{}; let rel;
+    if(c.alcance==='producto'){ if(!(c.productos||[]).includes(prod.nombre)) return; rel=ctx.qtyByName[prod.nombre]||0; }
+    else rel=ctx.totalUnits;
+    let tp=null; (c.tiers||[]).slice().sort((a,b)=>Number(a.min)-Number(b.min)).forEach(t=>{ if(rel>=Number(t.min)&&Number(t.precio)>0) tp=Number(t.precio); });
+    if(tp!==null && tp<best){ best=tp; src=pr.nombre; }
+  });
+  return {u0,best:Math.round(best*100)/100,src};
+}
+function priceEngine(basket,PRODUCTS,PROMOS,MAYOR_MIN){
+  const vig=_promosVigentes(PROMOS);
+  const escalas=vig.filter(p=>p.tipo==='cantidad');
+  const combos=vig.filter(p=>p.tipo==='combo');
+  const totalUnits=basket.reduce((s,i)=>s+Number(i.qty||0),0);
+  const qtyByName={}; basket.forEach(i=>{ qtyByName[i.nombre]=(qtyByName[i.nombre]||0)+Number(i.qty||0); });
+  const ctx={totalUnits,MAYOR_MIN,escalas,qtyByName};
+  const lines=basket.map(it=>{
+    const prod=PRODUCTS.find(x=>(it.id&&x.id===it.id)||x.nombre===it.nombre)||{nombre:it.nombre,presentaciones:[]};
+    const up=_unitPrice(prod,it.tamano,ctx);
+    return {...it,unit:up.best,unitOrig:up.u0,promo:(up.best<up.u0?up.src:''),lineTotal:Math.round(up.best*Number(it.qty||0)*100)/100};
+  });
+  const comboDisc=[];
+  combos.forEach(pr=>{
+    const c=pr.config||{}, L=c.productos||[], T=Number(c.precio)||0;
+    if(L.length<2||T<=0) return;
+    let packs=Infinity; L.forEach(n=>{ packs=Math.min(packs,qtyByName[n]||0); });
+    if(!isFinite(packs)) packs=0;
+    if(packs>=1){
+      let normal=0; L.forEach(n=>{ const p2=PRODUCTS.find(x=>x.nombre===n); if(p2) normal+=_unitPrice(p2,_firstTamano(p2),ctx).best; });
+      const per=normal-T;
+      if(per>0) comboDisc.push({nombre:pr.nombre,packs,monto:Math.round(per*packs*100)/100});
+    }
+  });
+  const subtotal=Math.round(lines.reduce((s,l)=>s+l.lineTotal,0)*100)/100;
+  const totalCombo=Math.round(comboDisc.reduce((s,c)=>s+c.monto,0)*100)/100;
+  return {lines,comboDisc,subtotal,total:Math.max(0,Math.round((subtotal-totalCombo)*100)/100),totalUnits,mayor:totalUnits>=MAYOR_MIN,escalas,combos,qtyByName};
+}
+
 
 function switchAdmView(v){
   ['productos','promos','ventas'].forEach(x=>{ document.getElementById('view-'+x).style.display=(x===v)?'block':'none'; });
@@ -502,57 +556,55 @@ function buildPromoTypes(){
     `<button type="button" class="${k===promoTipo?'on':''}" data-t="${k}"><b>${ic} ${t}</b><small>${d}</small></button>`).join('');
   document.getElementById('promoTypes').querySelectorAll('button').forEach(b=>b.onclick=()=>{promoTipo=b.dataset.t; buildPromoTypes(); renderPromoFields();});
 }
-
 function prodPickHTML(){
   const nombres=[...new Set(PRODUCTS.map(p=>p.nombre))].sort();
   return `<div class="prodpick" id="promoProds">${nombres.map(n=>`<label><input type="checkbox" value="${esc(n)}"> ${esc(n)}</label>`).join('')||'<div style="color:var(--muted);padding:8px">No hay productos aún</div>'}</div>`;
 }
-function tallaPickHTML(){
-  return `<div class="tallapick" id="promoTallas">${TALLAS_PROMO.map(t=>`<label><input type="checkbox" value="${t}"> ${t}</label>`).join('')}</div>`;
+function addTierRow(min,precio){
+  const box=document.getElementById('pf_tiers'); if(!box) return;
+  const row=document.createElement('div'); row.className='tier-row';
+  row.innerHTML=`<input class="tmin" type="number" min="1" step="1" placeholder="cant. (ej. 6)" value="${min||''}"><span>→ ${CONFIG.MONEDA}</span><input class="tprc" type="number" step="0.01" placeholder="precio c/u" value="${precio||''}"><button type="button" class="tier-rm">✕</button>`;
+  row.querySelector('.tier-rm').onclick=()=>row.remove();
+  box.appendChild(row);
 }
 function renderPromoFields(){
   const el=document.getElementById('promoFields'); let h='';
-  if(promoTipo==='producto'){
-    h=`<div class="subfield"><label>Perfumes en promoción</label>${prodPickHTML()}</div>
-       <div class="subfield"><label>Solo estas tallas (opcional — vacío = todas)</label>${tallaPickHTML()}</div>
-       <div class="subfield"><label>% de descuento</label><input id="pf_pct" type="number" step="1" placeholder="Ej. 20"></div>`;
-  } else if(promoTipo==='cantidad'){
-    h=`<div class="subfield"><label>Perfumes que aplican</label>${prodPickHTML()}</div>
-       <div class="subfield"><label>Solo estas tallas (opcional)</label>${tallaPickHTML()}</div>
-       <div class="subfield"><label>A partir de cuántas unidades</label><input id="pf_min" type="number" step="1" placeholder="Ej. 3"></div>
-       <div class="subfield"><label>Tipo de rebaja</label><select id="pf_modo"><option value="pct">% de descuento</option><option value="precio">Precio fijo por unidad</option></select></div>
-       <div class="subfield"><label>Valor</label><input id="pf_valor" type="number" step="0.01" placeholder="Ej. 15"></div>
-       <div class="subhint">Ejemplo: llevando 3 o más del 5ml, cada uno a S/15.</div>`;
+  if(promoTipo==='cantidad'){
+    h=`<div class="subfield"><label>¿Cómo se cuenta la cantidad?</label>
+         <select id="pf_alcance"><option value="mezclado">Mezclado (total de perfumes)</option><option value="producto">Por perfume (el mismo perfume)</option></select></div>
+       <div class="subfield" id="pf_prodwrap" style="display:none"><label>Perfumes que aplican</label>${prodPickHTML()}</div>
+       <div class="subfield"><label>Niveles de cantidad → precio por unidad</label>
+         <div id="pf_tiers"></div>
+         <button type="button" class="cancel" id="pf_addtier" style="display:block;margin-top:6px">+ Agregar nivel</button></div>
+       <div class="subhint">Ej.: x6 → S/70, x10 → S/65 (precio de cada perfume). El x3 (precio por mayor) ya es automático.</div>`;
   } else if(promoTipo==='combo'){
-    h=`<div class="subfield"><label>Perfumes elegibles para el combo</label>${prodPickHTML()}</div>
-       <div class="subfield"><label>Solo estas tallas (opcional)</label>${tallaPickHTML()}</div>
-       <div class="subfield"><label>¿Cuántos entran en el combo?</label><input id="pf_cant" type="number" step="1" placeholder="Ej. 2"></div>
-       <div class="subfield"><label>Precio total del combo S/</label><input id="pf_total" type="number" step="0.01" placeholder="Ej. 30"></div>
-       <div class="subhint">Ejemplo: cualquier 2 decants de 5ml por S/30 en total.</div>`;
-  } else if(promoTipo==='general'){
-    const cats=[...new Set(PRODUCTS.map(p=>p.categoria).filter(Boolean))];
-    h=`<div class="subfield"><label>Alcance</label><select id="pf_alcance"><option value="todo">Todo el catálogo</option><option value="categoria">Una categoría</option></select></div>
-       <div class="subfield" id="pf_catwrap" style="display:none"><label>Categoría</label><select id="pf_cat">${cats.map(c=>`<option>${esc(c)}</option>`).join('')}</select></div>
-       <div class="subfield"><label>% de descuento</label><input id="pf_pct" type="number" step="1" placeholder="Ej. 15"></div>`;
+    h=`<div class="subfield"><label>Perfumes que forman el pack</label>${prodPickHTML()}</div>
+       <div class="subfield"><label>Precio total del pack ${CONFIG.MONEDA}</label><input id="pf_ptotal" type="number" step="0.01" placeholder="Ej. 200"></div>
+       <div class="subhint">Al llevar TODOS estos perfumes juntos, se cobran a este precio total. En el catálogo se avisa qué falta para activarlo.</div>`;
   }
   el.innerHTML=h;
-  if(promoTipo==='general'){ const a=document.getElementById('pf_alcance'); a.onchange=()=>{ document.getElementById('pf_catwrap').style.display=a.value==='categoria'?'block':'none'; }; }
+  if(promoTipo==='cantidad'){
+    const alc=document.getElementById('pf_alcance');
+    alc.onchange=()=>{ document.getElementById('pf_prodwrap').style.display=alc.value==='producto'?'block':'none'; };
+    document.getElementById('pf_addtier').onclick=()=>addTierRow();
+    addTierRow();
+  }
 }
 function getChecked(id){ const box=document.getElementById(id); if(!box) return []; return [...box.querySelectorAll('input:checked')].map(i=>i.value); }
 function setChecked(id,vals){ const box=document.getElementById(id); if(!box) return; box.querySelectorAll('input').forEach(i=>i.checked=(vals||[]).includes(i.value)); }
 
 function buildPromoConfig(){
-  if(promoTipo==='producto') return {productos:getChecked('promoProds'),tallas:getChecked('promoTallas'),pct:+document.getElementById('pf_pct').value||0};
-  if(promoTipo==='cantidad') return {productos:getChecked('promoProds'),tallas:getChecked('promoTallas'),min:+document.getElementById('pf_min').value||0,modo:document.getElementById('pf_modo').value,valor:+document.getElementById('pf_valor').value||0};
-  if(promoTipo==='combo') return {productos:getChecked('promoProds'),tallas:getChecked('promoTallas'),cantidad:+document.getElementById('pf_cant').value||0,precio_total:+document.getElementById('pf_total').value||0};
-  if(promoTipo==='general'){ const alc=document.getElementById('pf_alcance').value; return {alcance:alc,categoria:alc==='categoria'?document.getElementById('pf_cat').value:null,pct:+document.getElementById('pf_pct').value||0}; }
+  if(promoTipo==='cantidad'){
+    const alcance=document.getElementById('pf_alcance').value;
+    const tiers=[...document.querySelectorAll('#pf_tiers .tier-row')].map(r=>({min:+r.querySelector('.tmin').value||0,precio:+r.querySelector('.tprc').value||0})).filter(t=>t.min>0&&t.precio>0).sort((a,b)=>a.min-b.min);
+    return {alcance, productos:alcance==='producto'?getChecked('promoProds'):[], tiers};
+  }
+  if(promoTipo==='combo'){ return {productos:getChecked('promoProds'), precio:+document.getElementById('pf_ptotal').value||0}; }
   return {};
 }
 function validarPromo(cfg){
-  if(promoTipo==='producto') return cfg.productos.length&&cfg.pct>0 ? '' : 'Elige al menos un perfume y un % de descuento.';
-  if(promoTipo==='cantidad') return cfg.productos.length&&cfg.min>0&&cfg.valor>0 ? '' : 'Elige perfumes, la cantidad mínima y el valor.';
-  if(promoTipo==='combo') return cfg.productos.length&&cfg.cantidad>0&&cfg.precio_total>0 ? '' : 'Elige perfumes, cuántos entran y el precio total.';
-  if(promoTipo==='general') return cfg.pct>0 ? '' : 'Indica el % de descuento.';
+  if(promoTipo==='cantidad'){ if(!cfg.tiers.length) return 'Agrega al menos un nivel (cantidad y precio).'; if(cfg.alcance==='producto'&&!cfg.productos.length) return 'Elige los perfumes que aplican.'; return ''; }
+  if(promoTipo==='combo'){ if((cfg.productos||[]).length<2) return 'Elige al menos 2 perfumes para el pack.'; if(!(cfg.precio>0)) return 'Pon el precio total del pack.'; return ''; }
   return '';
 }
 
@@ -576,7 +628,7 @@ document.getElementById('promoCancel').onclick=resetPromoForm;
 function resetPromoForm(){
   document.getElementById('promoEditId').value=''; document.getElementById('promoNombre').value='';
   document.getElementById('promoDesde').value=''; document.getElementById('promoHasta').value=''; document.getElementById('promoActivo').checked=true;
-  promoTipo='producto'; buildPromoTypes(); renderPromoFields();
+  promoTipo='cantidad'; buildPromoTypes(); renderPromoFields();
   document.getElementById('promoFormTitle').textContent='Nueva promoción';
 }
 
@@ -586,12 +638,9 @@ async function loadPromos(){
   PROMOS=data||[]; renderPromoList();
 }
 function promoResumen(p){
-  const c=p.config||{}; const tallas=(c.tallas&&c.tallas.length)?' ('+c.tallas.join(', ')+')':'';
-  const nProds=(c.productos||[]).length;
-  if(p.tipo==='producto') return `${c.pct}% de descuento en ${nProds} perfume(s)${tallas}`;
-  if(p.tipo==='cantidad') return `Desde ${c.min} uds: ${c.modo==='pct'?c.valor+'% dcto':CONFIG.MONEDA+' '+c.valor+' c/u'} · ${nProds} perfume(s)${tallas}`;
-  if(p.tipo==='combo') return `${c.cantidad} a elección por ${CONFIG.MONEDA} ${c.precio_total} · ${nProds} perfume(s)${tallas}`;
-  if(p.tipo==='general') return `${c.pct}% en ${c.alcance==='todo'?'todo el catálogo':'categoría '+c.categoria}`;
+  const c=p.config||{};
+  if(p.tipo==='cantidad'){ const t=(c.tiers||[]).map(x=>`x${x.min}: ${CONFIG.MONEDA} ${x.precio}`).join(' · '); return `${c.alcance==='producto'?'Por perfume ('+(c.productos||[]).length+')':'Mezclado'} — ${t||'sin niveles'}`; }
+  if(p.tipo==='combo'){ return `${(c.productos||[]).join(' + ')} = ${CONFIG.MONEDA} ${c.precio}`; }
   return '';
 }
 function promoEstado(p){
@@ -629,20 +678,22 @@ function editPromo(id){
   document.getElementById('promoDesde').value=p.desde||''; document.getElementById('promoHasta').value=p.hasta||'';
   document.getElementById('promoActivo').checked=p.activo!==false;
   const c=p.config||{};
-  setChecked('promoProds',c.productos); setChecked('promoTallas',c.tallas);
-  if(p.tipo==='producto'){ document.getElementById('pf_pct').value=c.pct||''; }
-  if(p.tipo==='cantidad'){ document.getElementById('pf_min').value=c.min||''; document.getElementById('pf_modo').value=c.modo||'pct'; document.getElementById('pf_valor').value=c.valor||''; }
-  if(p.tipo==='combo'){ document.getElementById('pf_cant').value=c.cantidad||''; document.getElementById('pf_total').value=c.precio_total||''; }
-  if(p.tipo==='general'){ document.getElementById('pf_alcance').value=c.alcance||'todo'; document.getElementById('pf_alcance').onchange&&document.getElementById('pf_alcance').dispatchEvent(new Event('change')); if(c.categoria){document.getElementById('pf_cat').value=c.categoria;} document.getElementById('pf_pct').value=c.pct||''; }
+  if(p.tipo==='cantidad'){
+    document.getElementById('pf_alcance').value=c.alcance||'mezclado';
+    document.getElementById('pf_alcance').dispatchEvent(new Event('change'));
+    setChecked('promoProds',c.productos);
+    document.getElementById('pf_tiers').innerHTML='';
+    (c.tiers||[]).forEach(t=>addTierRow(t.min,t.precio));
+    if(!(c.tiers||[]).length) addTierRow();
+  }
+  if(p.tipo==='combo'){ setChecked('promoProds',c.productos); document.getElementById('pf_ptotal').value=c.precio||''; }
   document.getElementById('promoFormTitle').textContent='Editar promoción';
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
 /* ================= NUEVA VENTA (POS) ================= */
-let VENTA=[], VTIPO='min';
-function vPrice(pres){ const may=Number(pres.precio_may)||0; return (VTIPO==='may'&&may>0)?may:Number(pres.precio); }
+let VENTA=[], VENTAS_HOY=[];
 function vStock(pres){ const st=pres.stock; return (st===null||st===undefined)?Infinity:Number(st); }
-
 function initVentaUI(){
   const sel=$('v_prod');
   const opts=PRODUCTS.filter(p=>(p.presentaciones||[]).some(x=>Number(x.precio)>0)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
@@ -654,7 +705,7 @@ function vFillSizes(){
   const p=PRODUCTS.find(x=>x.id===$('v_prod').value); const sz=$('v_size');
   if(!p){ sz.innerHTML='<option value="">—</option>'; $('v_stockhint').textContent=''; return; }
   const pres=(p.presentaciones||[]).filter(x=>Number(x.precio)>0);
-  sz.innerHTML=pres.map(x=>{ const st=vStock(x); const stTxt=st===Infinity?'∞':st; return `<option value="${esc(x.tamano)}">${esc(x.tamano)} — ${money(vPrice(x))} (stock ${stTxt})</option>`; }).join('');
+  sz.innerHTML=pres.map(x=>{ const st=vStock(x); const stTxt=st===Infinity?'∞':st; return `<option value="${esc(x.tamano)}">${esc(x.tamano)} — ${money(Number(x.precio))} (stock ${stTxt})</option>`; }).join('');
   vSizeHint();
 }
 function vSizeHint(){
@@ -666,50 +717,47 @@ function vAddItem(){
   const p=PRODUCTS.find(x=>x.id===$('v_prod').value); const size=$('v_size').value; const qty=Math.max(1,parseInt($('v_qty').value)||1);
   if(!p||!size){ return showMsg('v_msg','Elige producto y talla','err'); }
   const pres=(p.presentaciones||[]).find(x=>x.tamano===size); if(!pres) return;
-  const st=vStock(pres), price=vPrice(pres), key=p.id+'__'+size;
+  const st=vStock(pres), key=p.id+'__'+size;
   const ex=VENTA.find(v=>v.key===key), already=ex?ex.qty:0;
-  if(st!==Infinity && already+qty>st){ return showMsg('v_msg',`Solo hay ${st} de ${p.nombre} ${size}`,'err'); }
-  if(ex){ ex.qty+=qty; ex.price=price; } else VENTA.push({key,pid:p.id,nombre:p.nombre,size,qty,price});
+  if(st!==Infinity && already+qty>st){ return showMsg('v_msg',`Solo hay ${st} de ${p.nombre}`,'err'); }
+  if(ex) ex.qty+=qty; else VENTA.push({key,pid:p.id,nombre:p.nombre,size,qty});
   $('v_msg').className='msg'; $('v_msg').textContent=''; $('v_qty').value=1; vRender();
 }
+function vBasket(){ return VENTA.map(it=>({key:it.key,id:it.pid,nombre:it.nombre,tamano:it.size,qty:it.qty})); }
+function vCompute(){ return priceEngine(vBasket(),PRODUCTS,PROMOS,MAYOR_MIN); }
 function vRender(){
   const box=$('v_items');
-  if(!VENTA.length){ box.innerHTML='<div style="font-size:12.5px;color:var(--muted);padding:14px 0">Sin productos en la venta.</div>'; $('v_total').textContent=money(0); return; }
-  box.innerHTML=VENTA.map(it=>`<div class="vitem"><div class="vi-main"><b>${esc(it.nombre)}</b> <span class="vi-sub">${esc(it.size)} · ${it.qty}× ${money(it.price)}</span></div><span class="vi-amt">${money(it.price*it.qty)}</span><button class="vi-rm" onclick="vRemove('${it.key}')">Quitar</button></div>`).join('');
-  $('v_total').textContent=money(VENTA.reduce((s,it)=>s+it.price*it.qty,0));
+  if(!VENTA.length){ box.innerHTML='<div style="font-size:12.5px;color:var(--muted);padding:14px 0">Sin productos en la venta.</div>'; $('v_total').textContent=money(0); $('v_promoNote').innerHTML=''; return; }
+  const r=vCompute();
+  box.innerHTML=r.lines.map(l=>`<div class="vitem"><div class="vi-main"><b>${esc(l.nombre)}</b> <span class="vi-sub">${l.qty}× ${money(l.unit)}${l.promo?' · '+esc(l.promo):''}</span></div><span class="vi-amt">${money(l.lineTotal)}</span><button class="vi-rm" onclick="vRemove('${l.key}')">Quitar</button></div>`).join('')
+    + (r.comboDisc.length?r.comboDisc.map(c=>`<div class="vitem"><div class="vi-main">🎁 ${esc(c.nombre)}${c.packs>1?' ×'+c.packs:''}</div><span class="vi-amt" style="color:var(--ok)">- ${money(c.monto)}</span></div>`).join(''):'');
+  $('v_total').textContent=money(r.total);
+  let notes=[]; if(r.mayor) notes.push('Precio por mayor ('+MAYOR_MIN+'+)');
+  r.lines.forEach(l=>{ if(l.promo&&l.promo!=='Precio por mayor'&&!notes.includes(l.promo)) notes.push(l.promo); });
+  r.comboDisc.forEach(c=>{ if(!notes.includes(c.nombre)) notes.push('Pack '+c.nombre); });
+  $('v_promoNote').innerHTML = notes.length?('✓ Aplicado: '+notes.map(esc).join(' · ')):'';
 }
 function vRemove(key){ VENTA=VENTA.filter(v=>v.key!==key); vRender(); }
-function setVtipo(t){
-  VTIPO=t; document.querySelectorAll('#v_tipo button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
-  VENTA.forEach(it=>{ const p=PRODUCTS.find(x=>x.id===it.pid); const pr=p&&(p.presentaciones||[]).find(x=>x.tamano===it.size); if(pr) it.price=vPrice(pr); });
-  vFillSizes(); vRender();
-}
 async function registrarVenta(){
   if(!VENTA.length){ return showMsg('v_msg','Agrega al menos un producto','err'); }
+  const r=vCompute();
   const byProd={}; VENTA.forEach(it=>{ (byProd[it.pid]=byProd[it.pid]||[]).push(it); });
   const updates=[];
   for(const pid of Object.keys(byProd)){
-    const prod=PRODUCTS.find(p=>p.id===pid); if(!prod) return showMsg('v_msg','Producto no encontrado, recarga la página','err');
+    const prod=PRODUCTS.find(p=>p.id===pid); if(!prod) return showMsg('v_msg','Recarga la página','err');
     const pres=JSON.parse(JSON.stringify(prod.presentaciones||[]));
     for(const it of byProd[pid]){
-      const row=pres.find(x=>x.tamano===it.size);
-      if(!row) return showMsg('v_msg',`No existe la talla ${it.size} en ${prod.nombre}`,'err');
-      if(row.stock!==null && row.stock!==undefined){
-        if(it.qty>row.stock) return showMsg('v_msg',`Stock insuficiente: ${prod.nombre} ${it.size} (quedan ${row.stock})`,'err');
-        row.stock=row.stock-it.qty;
-      }
+      const row=pres.find(x=>x.tamano===it.size); if(!row) return showMsg('v_msg',`Falta ${it.size} en ${prod.nombre}`,'err');
+      if(row.stock!==null&&row.stock!==undefined){ if(it.qty>row.stock) return showMsg('v_msg',`Stock insuficiente: ${prod.nombre} (quedan ${row.stock})`,'err'); row.stock-=it.qty; }
     }
     updates.push({id:pid,presentaciones:pres});
   }
   $('v_save').disabled=true; $('v_save').textContent='Registrando…';
   try{
-    for(const u of updates){
-      const {error}=await sb.from('productos').update({presentaciones:u.presentaciones}).eq('id',u.id);
-      if(error) throw error;
-    }
-    const total=VENTA.reduce((s,it)=>s+it.price*it.qty,0);
-    const items=VENTA.map(it=>({nombre:it.nombre,tamano:it.size,cantidad:it.qty,precio:it.price,subtotal:Math.round(it.price*it.qty*100)/100}));
-    const {error:eIns}=await sb.from('ventas').insert({ tipo:VTIPO==='may'?'mayorista':'minorista', items, total:Math.round(total*100)/100, cliente:$('v_cliente').value.trim()||null, nota:$('v_nota').value.trim()||null });
+    for(const u of updates){ const {error}=await sb.from('productos').update({presentaciones:u.presentaciones}).eq('id',u.id); if(error) throw error; }
+    const items=r.lines.map(l=>({nombre:l.nombre,tamano:l.tamano,cantidad:l.qty,precio:l.unit,subtotal:l.lineTotal,promo:l.promo||null}));
+    const combos=r.comboDisc.map(c=>({nombre:c.nombre,packs:c.packs,monto:c.monto}));
+    const {error:eIns}=await sb.from('ventas').insert({ tipo:r.mayor?'mayorista':'minorista', items, combos, total:r.total, cliente:$('v_cliente').value.trim()||null, nota:$('v_nota').value.trim()||null });
     if(eIns) throw eIns;
     showMsg('v_msg','Venta registrada y stock descontado','ok');
     VENTA=[]; $('v_cliente').value=''; $('v_nota').value='';
@@ -717,23 +765,55 @@ async function registrarVenta(){
   }catch(err){ showMsg('v_msg', err.message||'Error al registrar la venta','err'); }
   finally{ $('v_save').disabled=false; $('v_save').textContent='Registrar venta'; }
 }
+async function restoreStock(items){
+  const prods={}; (items||[]).forEach(it=>{ const p=PRODUCTS.find(x=>x.nombre===it.nombre); if(p) prods[p.id]=p; });
+  for(const pid of Object.keys(prods)){
+    const p=prods[pid]; const pres=JSON.parse(JSON.stringify(p.presentaciones||[]));
+    (items||[]).forEach(it=>{ if(it.nombre===p.nombre){ const row=pres.find(x=>x.tamano===it.tamano); if(row&&row.stock!==null&&row.stock!==undefined) row.stock=Number(row.stock)+Number(it.cantidad||0); } });
+    await sb.from('productos').update({presentaciones:pres}).eq('id',pid);
+  }
+}
+async function delVenta(id){
+  const v=VENTAS_HOY.find(x=>x.id===id); if(!v) return;
+  if(!confirm('¿Eliminar esta venta? Se devolverá el stock descontado.')) return;
+  await restoreStock(v.items);
+  const {error}=await sb.from('ventas').delete().eq('id',id);
+  if(error) return showMsg('v_msg',error.message,'err');
+  await loadProducts(); initVentaUI(); loadVentasHoy();
+  showMsg('v_msg','Venta eliminada y stock devuelto','ok');
+}
+async function editVenta(id){
+  const v=VENTAS_HOY.find(x=>x.id===id); if(!v) return;
+  if(!confirm('Editar esta venta: se devuelve el stock y vuelve al formulario para modificarla. ¿Continuar?')) return;
+  await restoreStock(v.items);
+  await sb.from('ventas').delete().eq('id',id);
+  await loadProducts(); initVentaUI();
+  VENTA=[];
+  (v.items||[]).forEach(it=>{ const p=PRODUCTS.find(x=>x.nombre===it.nombre); if(p) VENTA.push({key:p.id+'__'+it.tamano,pid:p.id,nombre:p.nombre,size:it.tamano,qty:Number(it.cantidad)||1}); });
+  $('v_cliente').value=v.cliente||''; $('v_nota').value=v.nota||'';
+  vRender(); loadVentasHoy();
+  window.scrollTo({top:0,behavior:'smooth'});
+  showMsg('v_msg','Venta cargada para editar. Ajusta y vuelve a registrarla.','ok');
+}
 async function loadVentasHoy(){
   const start=new Date(); start.setHours(0,0,0,0);
   const {data,error}=await sb.from('ventas').select('*').gte('created_at',start.toISOString()).order('created_at',{ascending:false});
   if(error){ $('v_hoy').innerHTML=`<div style="font-size:12px;color:var(--err)">${error.message}</div>`; $('v_hoyTotal').textContent=money(0); return; }
-  const list=data||[]; $('v_hoyTotal').textContent=money(list.reduce((s,v)=>s+Number(v.total||0),0));
-  if(!list.length){ $('v_hoy').innerHTML='<div style="font-size:12.5px;color:var(--muted)">Aún no hay ventas hoy.</div>'; return; }
-  $('v_hoy').innerHTML=list.map(v=>{
+  VENTAS_HOY=data||[]; $('v_hoyTotal').textContent=money(VENTAS_HOY.reduce((s,v)=>s+Number(v.total||0),0));
+  if(!VENTAS_HOY.length){ $('v_hoy').innerHTML='<div style="font-size:12.5px;color:var(--muted)">Aún no hay ventas hoy.</div>'; return; }
+  $('v_hoy').innerHTML=VENTAS_HOY.map(v=>{
     const h=new Date(v.created_at).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
-    const its=(v.items||[]).map(i=>`${i.cantidad}× ${esc(i.nombre)} (${esc(i.tamano)})`).join(', ');
-    return `<div class="vhoy-card"><div class="vh-top"><span>${h} · ${esc(v.tipo||'')}</span><span>${money(v.total)}</span></div><div class="vh-sub">${its}${v.cliente?' · '+esc(v.cliente):''}${v.nota?' · '+esc(v.nota):''}</div></div>`;
+    const its=(v.items||[]).map(i=>`${i.cantidad}× ${esc(i.nombre)}`).join(', ');
+    const packs=(v.combos||[]).map(c=>`🎁 ${esc(c.nombre)}`).join(', ');
+    return `<div class="vhoy-card"><div class="vh-top"><span>${h} · ${esc(v.tipo||'')}</span><span>${money(v.total)}</span></div>
+      <div class="vh-sub">${its}${packs?' · '+packs:''}${v.cliente?' · '+esc(v.cliente):''}${v.nota?' · '+esc(v.nota):''}</div>
+      <div class="vh-acts"><button onclick="editVenta('${v.id}')">✎ Editar</button><button class="del" onclick="delVenta('${v.id}')">🗑 Eliminar</button></div></div>`;
   }).join('');
 }
 $('v_prod').onchange=vFillSizes;
 $('v_size').onchange=vSizeHint;
 $('v_add').onclick=vAddItem;
 $('v_save').onclick=registrarVenta;
-document.querySelectorAll('#v_tipo button').forEach(b=>b.onclick=()=>setVtipo(b.dataset.t));
 
 checkSession();
 </script>

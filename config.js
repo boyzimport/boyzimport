@@ -15,8 +15,11 @@ const CONFIG = {
   MONEDA: "S/",
 
   // --- Etiquetas del selector de precios (catálogo público) ---
-  LABEL_MINORISTA: "Minorista",
-  LABEL_MAYORISTA: "Mayorista",
+  LABEL_MINORISTA: "Precio unidad",
+  LABEL_MAYORISTA: "Precio por mayor",
+
+  // A partir de cuántos perfumes (en total) se aplica el precio por mayor:
+  MAYOR_MIN: 3,
 
   // --- WhatsApp para recibir pedidos (con código de país 51) ---
   WHATSAPP: "51964241608",
