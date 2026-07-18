@@ -21,6 +21,9 @@ const CONFIG = {
   // A partir de cuántos perfumes (en total) se aplica el precio por mayor:
   MAYOR_MIN: 3,
 
+  // Cuando el stock es igual o menor a esto, se marca "casi agotado":
+  STOCK_BAJO: 5,
+
   // --- WhatsApp para recibir pedidos (con código de país 51) ---
   WHATSAPP: "51964241608",
 

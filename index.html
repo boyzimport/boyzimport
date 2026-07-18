@@ -182,6 +182,17 @@
   .cart-tip{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin:0 0 8px;font-size:12px;color:var(--ink)}
   .cart-tip.ok{background:rgba(42,174,121,.14);border-color:rgba(42,174,121,.5);color:#7fe7bd}
   .cart-tip span{color:var(--muted)}
+  .confirm-row{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ink);margin:2px 0 8px;cursor:pointer}
+  .confirm-row input{width:18px;height:18px;accent-color:var(--gold);flex:none}
+  .order-msg{font-size:12.5px;margin:0 0 10px;line-height:1.4}
+  .order-msg:empty{margin:0}
+  .order-msg.ok{color:#7fe7bd}
+  .order-msg.err{color:var(--err)}
+  .stk-line{font-size:11.5px;color:var(--muted);margin:6px 0 0}
+  .stk-line.low{color:#e0a94b;font-weight:600}
+  .m-stock{font-size:12px;color:var(--muted);margin:0 0 12px}
+  .m-stock.low{color:#e0a94b;font-weight:600}
+  .m-stock.out{color:var(--err);font-weight:600}
   .ochips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 14px}
   .ochip{font-size:11.5px;font-weight:600;padding:6px 10px;border-radius:100px;border:1px solid var(--line);background:var(--surface2);color:var(--muted)}
   .ochip small{font-weight:500;opacity:.85}
@@ -261,7 +272,10 @@
   <div class="items" id="cartItems"></div>
   <div class="drawer-foot" id="cartFoot" style="display:none">
     <div class="foot-field"><label for="cName">Tu nombre (para el pedido)</label><input id="cName" type="text" placeholder="Ej. María López" /></div>
+    <div class="foot-field"><label for="cPhone">Tu WhatsApp (opcional)</label><input id="cPhone" type="tel" placeholder="Ej. 999 888 777" /></div>
     <div class="total"><span class="serif">Total</span><b id="cartTotal">S/ 0</b></div>
+    <label class="confirm-row"><input type="checkbox" id="confirmChk"> <span>Confirmo mi pedido de compra</span></label>
+    <div class="order-msg" id="orderMsg"></div>
     <button class="wa" id="waBtn">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.2-1.7-.9-2-1-.3-.1-.5-.1-.6.1-.2.3-.7 1-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.6-1.5-.9-2-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3M12 2a10 10 0 0 0-8.6 15l-1.3 4.8 4.9-1.3A10 10 0 1 0 12 2"/></svg>
       Pedir por WhatsApp
@@ -357,6 +371,10 @@ function priceEngine(basket,PRODUCTS,PROMOS,MAYOR_MIN){
 }
 
 function stockOf(pr){ const s=pr.stock; return (s===null||s===undefined||s==='')?Infinity:Number(s); }
+const STOCK_BAJO = Number(CONFIG.STOCK_BAJO)||5;
+function prodStock(p){ const a=presActivas(p); const pr=a[0]; return pr?stockOf(pr):Infinity; }
+function stockKey(p){ const st=prodStock(p); if(st<=0) return 9e9; if(!isFinite(st)) return 1e6; return st; }
+function modalStock(p){ const st=prodStock(p); if(!isFinite(st)) return ''; if(st<=0) return '<div class="m-stock out">Agotado</div>'; if(st<=STOCK_BAJO) return `<div class="m-stock low">¡Casi agotado! Quedan ${st}</div>`; return `<div class="m-stock">${st} disponibles</div>`; }
 function baseOf(pr){ const may=Number(pr.precio_may)||0; return (PRICE_MODE==='may'&&may>0)?may:Number(pr.precio); }
 const noimg='<div class="noimg"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2h6l1 3h-8zM7 5h10v3H7zM8 8h8l1 12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1z"/></svg></div>';
 
@@ -430,7 +448,7 @@ function filtered(){
     if(s==='precio-asc') return desde(a)-desde(b);
     if(s==='precio-desc') return desde(b)-desde(a);
     if(s==='nombre') return a.nombre.localeCompare(b.nombre);
-    return (b.destacado?1:0)-(a.destacado?1:0)||a.nombre.localeCompare(b.nombre);
+    return stockKey(a)-stockKey(b)||(b.destacado?1:0)-(a.destacado?1:0)||a.nombre.localeCompare(b.nombre);
   });
   return list;
 }
@@ -444,12 +462,12 @@ function render(){
   grid.innerHTML=list.map(p=>{
     const eff=effList(p); const desde=eff.reduce((m,x)=>x.precio<m.precio?x:m,eff[0]); const varias=eff.length>1;
     const hasPromo=eff.some(x=>x.precio<x.original); const promoName=(eff.find(x=>x.promo)||{}).promo;
-    const allOut=eff.every(x=>x.stk<=0);
+    const allOut=eff.every(x=>x.stk<=0); const st=prodStock(p); const low=isFinite(st)&&st>0&&st<=STOCK_BAJO;
     const img=p.imagen_url?`<img src="${p.imagen_url}" alt="${esc(p.nombre)}" loading="lazy">`:noimg;
     return `<article class="card" onclick="openModal('${p.id}')">
       <div class="thumb">
         ${eff.length>1?`<span class="badge">${eff.length} tallas</span>`:''}
-        ${allOut?'<span class="promo-flag" style="background:var(--err)">Agotado</span>':(hasPromo?`<span class="promo-flag">${esc(promoName||'Oferta')}</span>`:(p.destacado?'<span class="fav">Destacado</span>':''))}
+        ${allOut?'<span class="promo-flag" style="background:var(--err)">Agotado</span>':(low?'<span class="promo-flag" style="background:#c9862b">¡Casi agotado!</span>':(hasPromo?`<span class="promo-flag">${esc(promoName||'Oferta')}</span>`:(p.destacado?'<span class="fav">Destacado</span>':'')))}
         ${img}
       </div>
       <div class="card-body">
@@ -461,6 +479,7 @@ function render(){
           ${p.genero?`<span class="tag">${esc(p.genero)}</span>`:''}
           ${p.momento?`<span class="tag">${esc(p.momento)}</span>`:''}
         </div>
+        ${!isFinite(st)||st<=0?'':(low?`<div class="stk-line low">¡Últimas ${st} unidades!</div>`:`<div class="stk-line">${st} disponibles</div>`)}
         <div class="row">
           <div><span class="from-lbl">${varias?'Desde':'&nbsp;'}</span><div class="price">${hasPromo?`<span class="price-old">${money(desde.original)}</span>`:''}${money(desde.precio)}</div></div>
           <span class="view">Ver más →</span>
@@ -507,6 +526,7 @@ function openModal(id){
       </div>
       ${p.descripcion?`<p class="m-desc">${fmtDesc(p.descripcion)}</p>`:''}
       ${offerChips(p)}
+      ${modalStock(p)}
       ${eff.length>1?`<div class="m-sizes-lbl">Elige tu presentación</div><div class="sizes">${sizes}</div>`:''}
       <div class="m-actions">
         <button class="btn-add" onclick="addSelected()">
@@ -657,27 +677,64 @@ function renderCart(){
   }).join('') + (r.comboDisc.length?`<div style="padding:10px 0 2px">${r.comboDisc.map(c=>`<div class="promo-line"><span>🎁 ${esc(c.nombre)}</span><span>- ${money(c.monto)}</span></div>`).join('')}</div>`:'');
   document.getElementById('cartTotal').textContent=money(r.total);
   updateOfferBar();
+  const _chk=document.getElementById('confirmChk'); if(_chk){ const done=alreadySubmitted(); _chk.checked=done; if(done) setOrderMsg('✓ Pedido registrado. Continúa por WhatsApp 👇','ok'); else if((document.getElementById('orderMsg')||{}).className!=='order-msg err') setOrderMsg('',''); }
 }
 function openCart(){ document.getElementById('overlay').classList.add('on'); document.getElementById('drawer').classList.add('on'); }
 function closeCart(){ document.getElementById('overlay').classList.remove('on'); document.getElementById('drawer').classList.remove('on'); }
 document.getElementById('cartBtn').onclick=openCart;
 document.getElementById('closeCart').onclick=closeCart;
 document.getElementById('overlay').onclick=closeCart;
-document.getElementById('waBtn').onclick=()=>{
+function orderSig(){ const r=computeCart(); return JSON.stringify(cart.map(i=>[i.id,i.tamano,i.qty]))+'|'+r.total; }
+function alreadySubmitted(){ try{ return localStorage.getItem('bp_order_sig')===orderSig(); }catch(e){ return false; } }
+function markSubmitted(){ try{ localStorage.setItem('bp_order_sig',orderSig()); }catch(e){} }
+function setOrderMsg(t,cls){ const el=document.getElementById('orderMsg'); if(el){ el.textContent=t; el.className='order-msg '+(cls||''); } }
+async function submitPedido(origen){
+  if(!cart.length) return {ok:false};
+  if(alreadySubmitted()) return {ok:true,dup:true};
+  const r=computeCart();
+  const items=r.lines.map(l=>({nombre:l.nombre,tamano:l.tamano,cantidad:l.qty,precio:l.unit,subtotal:l.lineTotal,promo:l.promo||null}));
+  const combos=r.comboDisc.map(c=>({nombre:c.nombre,packs:c.packs,monto:c.monto}));
+  const payload={ estado:'pendiente', origen, tipo:r.mayor?'mayorista':'minorista', items, combos, total:r.total,
+    cliente:(document.getElementById('cName').value||'').trim()||null, telefono:(document.getElementById('cPhone').value||'').trim()||null };
+  try{ const {error}=await sb.from('ventas').insert(payload); if(error) return {ok:false,error:error.message}; markSubmitted(); return {ok:true}; }
+  catch(e){ return {ok:false,error:String(e)}; }
+}
+document.getElementById('confirmChk').onchange=async(e)=>{
+  if(!e.target.checked){ setOrderMsg('',''); return; }
+  if(!cart.length){ e.target.checked=false; toast('Tu carrito está vacío'); return; }
+  setOrderMsg('Registrando pedido…','');
+  const res=await submitPedido('confirmacion');
+  if(res.ok){ setOrderMsg(res.dup?'Tu pedido ya estaba registrado. Continúa por WhatsApp 👇':'✓ ¡Pedido registrado! Ahora escríbenos por WhatsApp para coordinar 👇','ok'); }
+  else { e.target.checked=false; setOrderMsg('No se pudo registrar ('+(res.error||'reintenta')+'). Igual puedes pedir por WhatsApp.','err'); }
+};
+document.getElementById('waBtn').onclick=async()=>{
   if(!cart.length) return;
   const r=computeCart();
+  submitPedido('whatsapp');
   const nombre=document.getElementById('cName').value.trim();
+  const tel=document.getElementById('cPhone').value.trim();
   let msg=`*Nuevo pedido — ${CONFIG.TIENDA_NOMBRE}*${r.mayor?' (precio por mayor)':''}\n\n`;
   r.lines.forEach(l=>{ msg+=`• ${l.qty}× ${l.nombre}${l.tamano&&l.tamano!=='Sellado'?` (${l.tamano})`:''} — ${money(l.lineTotal)}${l.promo?' ['+l.promo+']':''}\n`; });
   r.comboDisc.forEach(c=>{ msg+=`🎁 ${c.nombre}: - ${money(c.monto)}\n`; });
   msg+=`\n*Total: ${money(r.total)}*`;
   if(nombre) msg+=`\n\nCliente: ${nombre}`;
+  if(tel) msg+=`\nWhatsApp: ${tel}`;
   window.open(`https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}`,'_blank');
 };
 
 let t; document.getElementById('search').oninput=e=>{ clearTimeout(t); t=setTimeout(()=>{ q=e.target.value.toLowerCase().trim(); render(); },180); };
 document.getElementById('sort').onchange=render;
 let tt; function toast(m){ const el=document.getElementById('toast'); el.textContent=m; el.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('on'),1800); }
+async function refreshStock(){
+  const dr=document.getElementById('drawer'), md=document.getElementById('modal');
+  if((dr&&dr.classList.contains('on'))||(md&&md.classList.contains('on'))) return;
+  const { data, error } = await sb.from('productos').select('*');
+  if(error||!data) return;
+  PRODUCTS=data.filter(p=>p.visible!==false && presActivas(p).length>0);
+  render();
+}
+setInterval(refreshStock,60000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refreshStock(); });
 
 function pmNoteText(){ return PRICE_MODE==='may' ? `Estos precios se aplican al llevar ${MAYOR_MIN} o más` : `Llevando ${MAYOR_MIN} o más obtienes precio por mayor`; }
 function setMode(m){ if(PRICE_MODE===m) return; PRICE_MODE=m; document.querySelectorAll('.pm-btn').forEach(b=>b.classList.toggle('on',b.dataset.mode===m)); document.getElementById('pmNote').textContent=pmNoteText(); render(); if(document.getElementById('modal').classList.contains('on')&&modalProd) openModal(modalProd.id); }
