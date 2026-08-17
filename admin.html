@@ -170,6 +170,7 @@ img{display:block;max-width:100%}
       <button class="tab" data-tab="combos">Combos</button>
       <button class="tab" data-tab="preorden">Preorden</button>
       <button class="tab" data-tab="consolidado">Consolidado</button>
+      <button class="tab" data-tab="accesos">Accesos</button>
       <button class="tab" data-tab="ventas">Ventas</button>
       <button class="tab" data-tab="ajustes">Ajustes</button>
     </div>
@@ -211,6 +212,12 @@ img{display:block;max-width:100%}
     <div class="list" id="listGrupos"></div>
     <div class="sech">Pedidos individuales</div>
     <div class="list" id="listConPedidos"></div>
+  </section>
+
+  <section id="tab-accesos" style="display:none">
+    <div class="bar"><h3 style="font-family:'Cormorant Garamond',serif;font-size:1.4rem">Accesos de clientes</h3><button class="btn ghost" id="reloadAccesos" style="margin-left:auto">↻ Actualizar</button></div>
+    <div style="color:var(--muted);font-size:.9rem;margin-bottom:12px">Genera una contraseña para que el cliente entre a ver/editar su pedido (usuario = su nombre), y aprueba o rechaza los cambios que envíe. Los avisos también le llegan a tu WhatsApp desde el catálogo.</div>
+    <div id="accesosList"><div style="color:var(--muted)">Cargando...</div></div>
   </section>
 
   <section id="tab-ventas" style="display:none">
@@ -278,6 +285,8 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   $('#tab-combos').style.display   = t.dataset.tab==='combos'?'block':'none';
   $('#tab-preorden').style.display    = t.dataset.tab==='preorden'?'block':'none';
   $('#tab-consolidado').style.display = t.dataset.tab==='consolidado'?'block':'none';
+  $('#tab-accesos').style.display   = t.dataset.tab==='accesos'?'block':'none';
+  if(t.dataset.tab==='accesos') loadAccesos();
   $('#tab-ventas').style.display   = t.dataset.tab==='ventas'?'block':'none';
   $('#tab-ajustes').style.display  = t.dataset.tab==='ajustes'?'block':'none';
 });
@@ -1412,6 +1421,79 @@ if($('#newVenta')) $('#newVenta').onclick=()=>ventaManualForm();
 if($('#newPre')) $('#newPre').onclick=()=>preForm(null);
 if($('#newCon')) $('#newCon').onclick=()=>conForm(null);
 if($('#saveAjustes')) $('#saveAjustes').onclick=saveAjustes;
+if($('#reloadAccesos')) $('#reloadAccesos').onclick=loadAccesos;
+
+/* ================= ACCESOS DE CLIENTES ================= */
+let ACCESOS=[];
+async function loadAccesos(){
+  const [{data:pre},{data:con}] = await Promise.all([
+    sb.from('preorden_pedidos').select('*').order('created_at',{ascending:false}),
+    sb.from('consolidado_pedidos').select('*').order('created_at',{ascending:false})
+  ]);
+  ACCESOS = [
+    ...(pre||[]).map(r=>({...r,_tipo:'preorden'})),
+    ...(con||[]).map(r=>({...r,_tipo:'consolidado'}))
+  ].sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  renderAccesos();
+}
+function renderAccesos(){
+  const cont=$('#accesosList');
+  if(!ACCESOS.length){ cont.innerHTML='<div style="color:var(--muted)">Aún no hay pedidos.</div>'; return; }
+  const card=(r,i)=>{
+    const tipo = r._tipo==='preorden'?'Preorden':'Consolidado';
+    const acceso = r.cliente_usuario ? ('Usuario: <b>'+esc(r.cliente_usuario)+'</b>') : '<span style="color:var(--muted)">Sin acceso generado</span>';
+    let pend='';
+    if(r.cambio_pendiente){
+      const c=r.cambio_pendiente, campos={cliente_nombre:'Nombre',cliente_telefono:'Teléfono',cliente_direccion:'Dirección',cliente_nota:'Nota'}, filas=[];
+      for(const k in campos){ if(c[k]!=null && c[k]!==r[k]) filas.push(campos[k]+': <s style="opacity:.6">'+esc(r[k]||'—')+'</s> → <b>'+esc(c[k])+'</b>'); }
+      if(c.nuevo_comprobante) filas.push('➕ Nuevo comprobante: <a href="'+esc(c.nuevo_comprobante)+'" target="_blank" style="color:var(--gold-1)">ver</a>');
+      pend='<div style="margin-top:10px;padding:10px 12px;border:1px solid var(--gold-3);border-radius:10px">'
+        +'<div style="color:var(--gold-1);font-weight:600;margin-bottom:6px">⏳ Cambio pendiente</div>'
+        +'<div style="font-size:.86rem;display:flex;flex-direction:column;gap:3px">'+(filas.join('')||'<span style="color:var(--muted)">(sin diferencias de texto)</span>')+'</div>'
+        +'<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" data-aprobar="'+i+'">✅ Aprobar</button><button class="btn ghost" data-rechazar="'+i+'">✖ Rechazar</button></div></div>';
+    }
+    return '<div style="border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px">'
+      +'<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">'
+      +'<div><b>'+tipo+'</b> · '+esc(r.codigo||'—')+' · '+esc(r.cliente_nombre||'—')+'<br><span style="color:var(--muted);font-size:.85rem">'+esc(r.estado||'')+' · '+acceso+'</span></div>'
+      +'<button class="btn" data-cred="'+i+'">'+(r.cliente_usuario?'Cambiar contraseña':'Generar acceso')+'</button>'
+      +'</div>'+pend+'</div>';
+  };
+  const pendientes=ACCESOS.filter(r=>r.cambio_pendiente), resto=ACCESOS.filter(r=>!r.cambio_pendiente);
+  cont.innerHTML = (pendientes.length?'<div style="font-weight:600;margin:4px 0 10px">Cambios por revisar ('+pendientes.length+')</div>'+pendientes.map(r=>card(r,ACCESOS.indexOf(r))).join(''):'')
+    + '<div style="font-weight:600;margin:14px 0 10px">Todos los pedidos</div>' + resto.map(r=>card(r,ACCESOS.indexOf(r))).join('');
+  cont.querySelectorAll('[data-cred]').forEach(b=>b.onclick=()=>genCred(+b.dataset.cred));
+  cont.querySelectorAll('[data-aprobar]').forEach(b=>b.onclick=()=>aprobarCambio(+b.dataset.aprobar));
+  cont.querySelectorAll('[data-rechazar]').forEach(b=>b.onclick=()=>rechazarCambio(+b.dataset.rechazar));
+}
+async function genCred(i){
+  const r=ACCESOS[i]; if(!r) return;
+  const usuario=(prompt('Usuario para el cliente (su nombre):', r.cliente_nombre||'')||'').trim();
+  if(!usuario) return;
+  let pass=(prompt('Contraseña (déjala vacía para generar una automática):','')||'').trim();
+  if(!pass) pass=Math.random().toString(36).slice(2,8).toUpperCase();
+  const { error } = await sb.rpc('admin_generar_credencial', { p_tipo:r._tipo, p_id:r.id, p_usuario:usuario, p_pass:pass });
+  if(error){ toast('Error: '+error.message,true); return; }
+  const texto='Acceso a tu pedido '+(r.codigo||'')+':\nUsuario: '+usuario+'\nContraseña: '+pass;
+  try{ await navigator.clipboard.writeText(texto); }catch(e){}
+  alert('Acceso generado y copiado al portapapeles:\n\n'+texto+'\n\nEnvíaselo al cliente por WhatsApp.');
+  loadAccesos();
+}
+async function aprobarCambio(i){
+  const r=ACCESOS[i]; if(!r) return;
+  if(!confirm('¿Aprobar este cambio? Se aplicará al pedido.')) return;
+  const { error } = await sb.rpc('admin_aprobar_cambio', { p_tipo:r._tipo, p_id:r.id });
+  if(error){ toast('Error: '+error.message,true); return; }
+  toast('Cambio aprobado'); await loadAccesos();
+  if(r._tipo==='preorden') loadPrePedidos(); else loadConPedidos();
+}
+async function rechazarCambio(i){
+  const r=ACCESOS[i]; if(!r) return;
+  if(!confirm('¿Rechazar este cambio? Se mantiene lo último aprobado.')) return;
+  const { error } = await sb.rpc('admin_rechazar_cambio', { p_tipo:r._tipo, p_id:r.id });
+  if(error){ toast('Error: '+error.message,true); return; }
+  toast('Cambio rechazado'); loadAccesos();
+}
+
 
 let tt; function toast(m,bad){ const t=$('#toast'); t.textContent=m; t.className='toast show'+(bad?' bad':''); clearTimeout(tt); tt=setTimeout(()=>t.className='toast',2600); }
 

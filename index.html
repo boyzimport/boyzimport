@@ -41,6 +41,10 @@ input{font-family:inherit}
 #loader.hide{opacity:0; visibility:hidden}
 #loader img{width:250px; max-width:70vw; animation:pulse 2s ease-in-out infinite}
 #loader .word{font-family:'Cinzel',serif; font-size:1.8rem; letter-spacing:.14em; color:var(--gold-1); animation:pulse 2s ease-in-out infinite}
+#loader .brandmark{text-align:center; color:var(--gold-1); animation:pulse 2s ease-in-out infinite; padding:0 18px}
+#loader .brandmark .l1{font-family:'Cinzel',serif; font-weight:700; font-size:clamp(2.6rem,12vw,4.4rem); letter-spacing:.10em; line-height:1}
+#loader .brandmark .l2{font-family:'Cinzel',serif; font-weight:500; font-size:clamp(1rem,4.5vw,1.5rem); letter-spacing:.44em; margin-top:.4em; padding-left:.44em; color:var(--muted)}
+#loader .brandmark .rule{width:56px; height:2px; background:var(--accent); margin:.85em auto 0; border-radius:2px}
 @keyframes pulse{0%,100%{opacity:.55; transform:scale(.98)} 50%{opacity:1; transform:scale(1)}}
 
 /* Stock en tarjeta */
@@ -415,7 +419,7 @@ header::after{background:var(--line); opacity:1}
 </head>
 <body>
 
-<div id="loader"><img id="loaderLogo" alt=""></div>
+<div id="loader"></div>
 
 <header>
   <div class="nav">
@@ -426,6 +430,9 @@ header::after{background:var(--line); opacity:1}
     </div>
     <button class="cart-btn" id="installBtn" style="display:none" aria-label="Instalar app" title="Instalar app">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 3v11" stroke-linecap="round"/><path d="M7 10l5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 20h14" stroke-linecap="round"/></svg>
+    </button>
+    <button class="cart-btn" id="loginBtn" aria-label="Ingresar" title="Ingresar a mi pedido">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.4 3.1-5.6 7-5.6s7 2.2 7 5.6" stroke-linecap="round"/></svg>
     </button>
     <button class="cart-btn" id="openCart" aria-label="Carrito">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M6 6h15l-1.5 9h-12z" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M6 6L5 3H3" stroke-linecap="round"/></svg>
@@ -501,22 +508,36 @@ const $ = s => document.querySelector(s);
 const fmt = n => CONFIG.MONEDA + ' ' + Number(n).toFixed(2);
 const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-/* Pantalla de carga: usa el logo de carga (fondo blanco/letras negras) */
-(function(){ const l=$('#loaderLogo'); if(!l) return;
-  if(CONFIG.LOGO_CARGA) l.src=CONFIG.LOGO_CARGA;
-  else l.outerHTML = `<div class="word">${esc(CONFIG.TIENDA_NOMBRE||'')}</div>`;
+/* Pantalla de carga: muestra el texto de CARGA_TEXTO (elegante). Si no hay, usa el logo o el nombre. */
+(function(){ const l=$('#loader'); if(!l) return;
+  const txt=(CONFIG.CARGA_TEXTO || '').trim();
+  if(txt){
+    const w=txt.split(/\s+/);
+    const l1=esc(w.shift()||'');
+    const l2=esc(w.join(' '));
+    l.innerHTML='<div class="brandmark"><div class="l1">'+l1+'</div>'
+      +(l2?'<div class="l2">'+l2+'</div>':'')
+      +'<div class="rule"></div></div>';
+  } else if(CONFIG.LOGO_CARGA){
+    l.innerHTML='<img alt="">'; l.querySelector('img').src=CONFIG.LOGO_CARGA;
+  } else {
+    l.innerHTML='<div class="word">'+esc(CONFIG.TIENDA_NOMBRE||'')+'</div>';
+  }
 })();
 
 /* Branding desde config */
 $('#brand').innerHTML = CONFIG.LOGO_URL ? `<img src="${CONFIG.LOGO_URL}" alt="${esc(CONFIG.TIENDA_NOMBRE)}" onerror="this.outerHTML='&lt;span class=\\'word gold-text\\'&gt;${esc(CONFIG.TIENDA_NOMBRE)}&lt;/span&gt;'">` : `<span class="word gold-text">${esc(CONFIG.TIENDA_NOMBRE)}</span>`;
 $('#tagline').textContent = CONFIG.TIENDA_TAGLINE || '';
 $('#heroTitle').textContent = CONFIG.TIENDA_NOMBRE;
-/* Banner de envíos (marquee) */
+/* Banner de envíos (marquee): BANNER_ENVIO puede ser un texto o una lista de frases */
 (function(){ const m=$('#marquee'); if(!m) return;
-  const txt=(CONFIG.BANNER_ENVIO || CONFIG.ENVIO_TEXTO || '').trim();
-  if(!txt){ m.style.display='none'; return; }
-  const uno=`<span>${esc(txt)}</span><span>◆</span>`;
-  m.innerHTML=`<div class="mq-track">${uno.repeat(8)}</div>`;
+  let frases = CONFIG.BANNER_ENVIO;
+  if(Array.isArray(frases)) frases = frases.map(f=>String(f).trim()).filter(Boolean);
+  else { const t=String(frases||CONFIG.ENVIO_TEXTO||'').trim(); frases = t ? [t] : []; }
+  if(!frases.length){ m.style.display='none'; return; }
+  const seg = frases.map(f=>`<span>${esc(f)}</span><span>◆</span>`).join('');
+  const reps = Math.max(2, Math.ceil(8/frases.length));
+  m.innerHTML=`<div class="mq-track">${seg.repeat(reps)}</div>`;
 })();
 if(CONFIG.HERO_SUB) $('#heroSub').textContent = CONFIG.HERO_SUB;
 (function(){ const orn=$('#heroOrn'); if(!orn) return;
@@ -1154,7 +1175,128 @@ function abrirConsulta(){
   $('#overlay').classList.add('open'); document.body.style.overflow='hidden';
 }
 
-/* ================= Filtros ================= */
+/* ================= INGRESAR: cuenta del cliente ================= */
+const LOGIN_KEY = 'cuenta_'+(CONFIG.TIENDA_NOMBRE||'tienda');
+let SESION = null;
+try{ SESION = JSON.parse(localStorage.getItem(LOGIN_KEY)||'null'); }catch(e){}
+(function(){ const b=$('#loginBtn'); if(b) b.onclick=()=>{ SESION?mostrarMisPedidos():openLogin(); }; })();
+
+function estadoTextoCliente(est){
+  return ({pendiente:'En revisión',aprobado:'Aprobado ✅',confirmado:'Confirmado ✅',entregado:'Entregado 🎉',rechazado:'Rechazado'})[est||'pendiente'] || est;
+}
+
+function openLogin(){
+  $('#sheet').innerHTML = `<div class="hd" style="padding:22px 24px"><button class="close" id="closeSheet"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button></div>
+    <div class="bd">
+      <div class="marca">Mi cuenta</div>
+      <h2>Ingresar a mi pedido</h2>
+      <div class="genero">Usa tu nombre y la contraseña que te enviamos por WhatsApp. Se activa cuando aprobamos tu preorden o consolidado.</div>
+      <div class="miniform" style="margin-top:12px"><input id="logUser" placeholder="Tu nombre *" autocomplete="name"></div>
+      <div class="miniform" style="margin-top:10px"><input id="logPass" type="password" placeholder="Contraseña *" autocomplete="current-password"></div>
+      <button class="add-cta" id="logBtn" style="margin-top:14px">Ingresar</button>
+      <div id="logResult" style="margin-top:14px"></div>
+    </div>`;
+  $('#closeSheet').onclick=closeProduct;
+  $('#logBtn').onclick=hacerLogin;
+  $('#logPass').addEventListener('keydown',e=>{ if(e.key==='Enter') hacerLogin(); });
+  $('#overlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+
+async function hacerLogin(){
+  const u=($('#logUser').value||'').trim(), p=($('#logPass').value||'');
+  if(!u||!p){ toast('Escribe tu nombre y contraseña'); return; }
+  $('#logResult').innerHTML='<div class="state" style="padding:16px"><div class="spinner"></div></div>';
+  const { data, error } = await sb.rpc('cliente_login', { p_usuario:u, p_pass:p });
+  if(error){ $('#logResult').innerHTML='<div class="genero">Ocurrió un error. Intenta de nuevo.</div>'; return; }
+  const pedidos = data||[];
+  if(!pedidos.length){ $('#logResult').innerHTML='<div class="genero">Nombre o contraseña incorrectos, o tu pedido aún no está aprobado.</div>'; return; }
+  SESION = { u, p };
+  try{ localStorage.setItem(LOGIN_KEY, JSON.stringify(SESION)); }catch(e){}
+  mostrarMisPedidos(pedidos);
+}
+
+function cerrarSesion(){ SESION=null; try{ localStorage.removeItem(LOGIN_KEY); }catch(e){} toast('Sesión cerrada'); closeProduct(); }
+
+async function mostrarMisPedidos(pre){
+  if(!SESION){ return openLogin(); }
+  let pedidos = pre;
+  if(!pedidos){ const { data } = await sb.rpc('cliente_login', { p_usuario:SESION.u, p_pass:SESION.p }); pedidos = data||[]; }
+  if(!pedidos.length){ cerrarSesion(); return; }
+  $('#sheet').innerHTML = `<div class="hd" style="padding:22px 24px"><button class="close" id="closeSheet"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button></div>
+    <div class="bd">
+      <div class="marca">Mi cuenta</div>
+      <h2>Mis pedidos</h2>
+      <div class="genero">Hola ${esc(pedidos[0].cliente_nombre||SESION.u)}. Cualquier cambio queda pendiente hasta que lo aprobemos.</div>
+      <div id="misPedidos" style="margin-top:14px;display:flex;flex-direction:column;gap:14px"></div>
+      <button class="np" id="logout" style="margin-top:16px;padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);color:var(--gold-1)">Cerrar sesión</button>
+    </div>`;
+  $('#closeSheet').onclick=closeProduct;
+  $('#logout').onclick=cerrarSesion;
+  const cont=$('#misPedidos');
+  cont.innerHTML = pedidos.map((o,i)=>{
+    const tipo = o.tipo==='preorden'?'Preorden ✈️':'Consolidado 🤝';
+    const items = (o.items||[]).map(it=>`<div style="display:flex;justify-content:space-between;gap:10px"><span>${esc(it.nombre||it.marca||'Ítem')}${it.qty?' × '+it.qty:''}</span><span>${it.precio!=null?fmt(it.precio*(it.qty||1)):(it.subtotal!=null?fmt(it.subtotal):'')}</span></div>`).join('') || '<div style="color:var(--muted)">Sin ítems.</div>';
+    const comps = (o.comprobantes||[]).length;
+    return `<div style="border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--panel)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <strong>${tipo}</strong><span class="est-badge ${esc(o.estado||'pendiente')}">${esc(estadoTextoCliente(o.estado))}</span>
+      </div>
+      <div class="genero" style="margin-top:4px">Código: ${esc(o.codigo||'—')}</div>
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px;font-size:.9rem">${items}</div>
+      ${o.total!=null?`<div style="display:flex;justify-content:space-between;margin-top:8px;font-weight:600"><span>Total</span><span>${fmt(o.total)}</span></div>`:''}
+      <div class="genero" style="margin-top:8px">Comprobantes enviados: ${comps}</div>
+      ${o.tiene_cambio_pendiente?`<div style="margin-top:8px;color:var(--gold-1);font-size:.86rem">⏳ Tienes un cambio esperando aprobación.</div>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button class="np" data-edit="${i}" style="padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);color:var(--gold-1)">✏️ Editar datos</button>
+        <label class="np" style="padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);color:var(--gold-1);cursor:pointer">📎 Subir comprobante<input type="file" accept="image/*" data-comp="${i}" style="display:none"></label>
+      </div>
+    </div>`;
+  }).join('');
+  cont.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editarPedido(pedidos[+b.dataset.edit]));
+  cont.querySelectorAll('[data-comp]').forEach(inp=>inp.onchange=async e=>{
+    const o=pedidos[+inp.dataset.comp], f=e.target.files[0]; if(!f) return;
+    toast('Subiendo comprobante...');
+    const url=await subirComprobante(f);
+    if(!url){ toast('No se pudo subir'); return; }
+    const { error } = await sb.rpc('cliente_editar', { p_usuario:SESION.u, p_pass:SESION.p, p_tipo:o.tipo, p_id:o.id, p_cambios:{ nuevo_comprobante:url } });
+    if(error){ toast('Error al enviar'); return; }
+    toast('Comprobante enviado ✅');
+    notificarWA(o, 'Subí un nuevo comprobante de pago.');
+    mostrarMisPedidos();
+  });
+  $('#overlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+
+function editarPedido(o){
+  $('#sheet').innerHTML = `<div class="hd" style="padding:22px 24px"><button class="close" id="closeSheet"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button></div>
+    <div class="bd">
+      <div class="marca">Editar</div>
+      <h2>Editar mis datos</h2>
+      <div class="genero">El cambio queda pendiente hasta que lo aprobemos. Mientras tanto se mantiene lo último aprobado.</div>
+      <div class="miniform" style="margin-top:12px"><input id="edNombre" placeholder="Nombre" value="${esc(o.cliente_nombre||'')}"></div>
+      <div class="miniform" style="margin-top:10px"><input id="edTel" placeholder="Teléfono / WhatsApp" inputmode="tel" value="${esc(o.cliente_telefono||'')}"></div>
+      <div class="miniform" style="margin-top:10px"><input id="edDir" placeholder="Dirección (opcional)" value="${esc(o.cliente_direccion||'')}"></div>
+      <div class="miniform" style="margin-top:10px"><textarea id="edNota" placeholder="Nota (opcional)" rows="3" style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:8px;color:var(--cream);padding:9px 11px;font-family:inherit">${esc(o.cliente_nota||'')}</textarea></div>
+      <button class="add-cta" id="edGuardar" style="margin-top:14px">Enviar cambios</button>
+      <button class="np" id="edVolver" style="margin-top:10px;padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);color:var(--gold-1)">Volver</button>
+    </div>`;
+  $('#closeSheet').onclick=closeProduct;
+  $('#edVolver').onclick=()=>mostrarMisPedidos();
+  $('#edGuardar').onclick=async()=>{
+    const cambios={ cliente_nombre:$('#edNombre').value.trim(), cliente_telefono:$('#edTel').value.trim(), cliente_direccion:$('#edDir').value.trim(), cliente_nota:$('#edNota').value.trim() };
+    const { error } = await sb.rpc('cliente_editar', { p_usuario:SESION.u, p_pass:SESION.p, p_tipo:o.tipo, p_id:o.id, p_cambios:cambios });
+    if(error){ toast('Error al enviar'); return; }
+    toast('Cambios enviados ✅ (pendientes)');
+    notificarWA(o, 'Edité mis datos:\n• Nombre: '+cambios.cliente_nombre+'\n• Tel: '+cambios.cliente_telefono+(cambios.cliente_direccion?'\n• Dir: '+cambios.cliente_direccion:'')+(cambios.cliente_nota?'\n• Nota: '+cambios.cliente_nota:''));
+    mostrarMisPedidos();
+  };
+  $('#overlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+
+function notificarWA(o, detalle){
+  const msg = encodeURIComponent(`Hola, soy ${o.cliente_nombre||SESION.u}. Pedido ${o.codigo||''} (${o.tipo}).\n${detalle}\nPor favor aprueba el cambio. ¡Gracias!`);
+  setTimeout(()=>{ if(confirm('¿Avisar por WhatsApp que enviaste un cambio?')) window.open(`https://wa.me/${CONFIG.WHATSAPP}?text=${msg}`, '_blank'); }, 250);
+}
 function renderFilters(){
   const cats = ['Todos', ...(CONFIG.CATEGORIAS||[])];
   const gens = ['Todos', ...(CONFIG.GENEROS||[])];
