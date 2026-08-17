@@ -1426,15 +1426,22 @@ if($('#reloadAccesos')) $('#reloadAccesos').onclick=loadAccesos;
 /* ================= ACCESOS DE CLIENTES ================= */
 let ACCESOS=[];
 async function loadAccesos(){
-  const [{data:pre},{data:con}] = await Promise.all([
-    sb.from('preorden_pedidos').select('*').order('created_at',{ascending:false}),
-    sb.from('consolidado_pedidos').select('*').order('created_at',{ascending:false})
-  ]);
-  ACCESOS = [
-    ...(pre||[]).map(r=>({...r,_tipo:'preorden'})),
-    ...(con||[]).map(r=>({...r,_tipo:'consolidado'}))
-  ].sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
-  renderAccesos();
+  const cont=$('#accesosList'); if(cont) cont.innerHTML='<div style="color:var(--muted)">Cargando…</div>';
+  try{
+    const [rp,rc] = await Promise.all([
+      sb.from('preorden_pedidos').select('*').order('created_at',{ascending:false}),
+      sb.from('consolidado_pedidos').select('*').order('created_at',{ascending:false})
+    ]);
+    if(rp.error) throw rp.error;
+    if(rc.error) throw rc.error;
+    ACCESOS = [
+      ...(rp.data||[]).map(r=>({...r,_tipo:'preorden'})),
+      ...(rc.data||[]).map(r=>({...r,_tipo:'consolidado'}))
+    ].sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+    renderAccesos();
+  }catch(e){
+    if(cont) cont.innerHTML='<div style="color:#c0392b">No se pudieron cargar los pedidos:<br>'+esc(e.message||e)+'</div>';
+  }
 }
 function renderAccesos(){
   const cont=$('#accesosList');
@@ -1444,20 +1451,31 @@ function renderAccesos(){
     const acceso = r.cliente_usuario ? ('Usuario: <b>'+esc(r.cliente_usuario)+'</b>') : '<span style="color:var(--muted)">Sin acceso generado</span>';
     let pend='';
     if(r.cambio_pendiente){
-      const c=r.cambio_pendiente, campos={cliente_nombre:'Nombre',cliente_telefono:'Teléfono',cliente_direccion:'Dirección',cliente_nota:'Nota'}, filas=[];
-      for(const k in campos){ if(c[k]!=null && c[k]!==r[k]) filas.push(campos[k]+': <s style="opacity:.6">'+esc(r[k]||'—')+'</s> → <b>'+esc(c[k])+'</b>'); }
-      if(c.nuevo_comprobante) filas.push('➕ Nuevo comprobante: <a href="'+esc(c.nuevo_comprobante)+'" target="_blank" style="color:var(--gold-1)">ver</a>');
-      pend='<div style="margin-top:10px;padding:10px 12px;border:1px solid var(--gold-3);border-radius:10px">'
-        +'<div style="color:var(--gold-1);font-weight:600;margin-bottom:6px">⏳ Cambio pendiente</div>'
-        +'<div style="font-size:.86rem;display:flex;flex-direction:column;gap:3px">'+(filas.join('')||'<span style="color:var(--muted)">(sin diferencias de texto)</span>')+'</div>'
-        +'<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" data-aprobar="'+i+'">✅ Aprobar</button><button class="btn ghost" data-rechazar="'+i+'">✖ Rechazar</button></div></div>';
+      const c=r.cambio_pendiente;
+      if(c.tipo==='consolidado_items'){
+        const its=(c.items||[]).map(it=>'<div style="display:flex;justify-content:space-between"><span>'+esc([it.marca,it.nombre].filter(Boolean).join(' · '))+' × '+(it.qty||1)+'</span><span>'+fmtV(it.subtotal!=null?it.subtotal:0)+'</span></div>').join('');
+        pend='<div style="margin-top:10px;padding:10px 12px;border:1px solid var(--gold-3);border-radius:10px">'
+          +'<div style="color:var(--gold-1);font-weight:600;margin-bottom:6px">⏳ Cambio de pedido (ítems / monto)</div>'
+          +'<div style="font-size:.85rem">'+its+'</div>'
+          +'<div style="display:flex;justify-content:space-between;font-weight:600;margin-top:6px;border-top:1px solid var(--line);padding-top:6px"><span>Nuevo total</span><span>'+fmtV(c.total||0)+'</span></div>'
+          +'<div style="display:flex;justify-content:space-between;font-size:.85rem"><span>Antes: '+fmtV(r.total||0)+'</span><span>Inversión: '+fmtV(c.inversion_declarada||0)+(c.bracket_etiqueta?' · '+esc(c.bracket_etiqueta):'')+'</span></div>'
+          +'<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" data-aprobar="'+i+'">✅ Aprobar</button><button class="btn ghost" data-rechazar="'+i+'">✖ Rechazar</button></div></div>';
+      } else {
+        const campos={cliente_nombre:'Nombre',cliente_telefono:'Teléfono',cliente_direccion:'Dirección',cliente_nota:'Nota'}, filas=[];
+        for(const k in campos){ if(c[k]!=null && c[k]!==r[k]) filas.push(campos[k]+': <s style="opacity:.6">'+esc(r[k]||'—')+'</s> → <b>'+esc(c[k])+'</b>'); }
+        if(c.nuevo_comprobante) filas.push('➕ Nuevo comprobante: <a href="'+esc(c.nuevo_comprobante)+'" target="_blank" style="color:var(--gold-1)">ver</a>');
+        pend='<div style="margin-top:10px;padding:10px 12px;border:1px solid var(--gold-3);border-radius:10px">'
+          +'<div style="color:var(--gold-1);font-weight:600;margin-bottom:6px">⏳ Cambio pendiente</div>'
+          +'<div style="font-size:.86rem;display:flex;flex-direction:column;gap:3px">'+(filas.join('')||'<span style="color:var(--muted)">(sin diferencias de texto)</span>')+'</div>'
+          +'<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" data-aprobar="'+i+'">✅ Aprobar</button><button class="btn ghost" data-rechazar="'+i+'">✖ Rechazar</button></div></div>';
+      }
     }
     const pg=resumenPagosAdmin(r);
     const abonosRows=(r.abonos||[]).map(a=>{
       const f=a.fecha?new Date(a.fecha).toLocaleDateString():'';
       return '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:.84rem;padding:4px 0;border-top:1px solid var(--line)">'
         +'<span>'+f+' · '+(esc(a.nota||'(sin nota)'))+' · '+(a.confirmado?'<span style="color:var(--gold-1)">✅ confirmado</span>':'<span style="color:#e6a24b">⏳ por confirmar</span>')+'</span>'
-        +'<span style="display:flex;gap:6px;align-items:center"><b>'+fmt(a.monto)+'</b>'
+        +'<span style="display:flex;gap:6px;align-items:center"><b>'+fmtV(a.monto)+'</b>'
         +(a.confirmado?'':'<button class="btn" data-abconf="'+i+'|'+a.id+'" style="padding:2px 8px;font-size:.75rem">Confirmar</button>')
         +'<button class="btn ghost" data-abed="'+i+'|'+a.id+'" style="padding:2px 8px;font-size:.75rem">Editar</button>'
         +'<button class="btn danger" data-abdel="'+i+'|'+a.id+'" style="padding:2px 8px;font-size:.75rem">✕</button></span></div>';
@@ -1465,9 +1483,9 @@ function renderAccesos(){
     const pagos='<div style="margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px">'
       +'<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600">💵 Pagos</span>'
       +'<button class="btn ghost" data-abadd="'+i+'" style="padding:4px 10px;font-size:.78rem">+ Agregar pago</button></div>'
-      +'<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;margin:6px 0"><span>Pagado: <b>'+fmt(pg.pagado)+'</b></span>'
-      +(pg.porConfirmar>0?'<span style="color:#e6a24b">Por confirmar: <b>'+fmt(pg.porConfirmar)+'</b></span>':'')
-      +'<span>Saldo: <b style="color:'+(pg.saldo>0?'#e6a24b':'var(--gold-1)')+'">'+fmt(Math.max(0,pg.saldo))+'</b></span></div>'
+      +'<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;margin:6px 0"><span>Pagado: <b>'+fmtV(pg.pagado)+'</b></span>'
+      +(pg.porConfirmar>0?'<span style="color:#e6a24b">Por confirmar: <b>'+fmtV(pg.porConfirmar)+'</b></span>':'')
+      +'<span>Saldo: <b style="color:'+(pg.saldo>0?'#e6a24b':'var(--gold-1)')+'">'+fmtV(Math.max(0,pg.saldo))+'</b></span></div>'
       +abonosRows+'</div>';
     return '<div style="border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px">'
       +'<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">'

@@ -948,10 +948,100 @@ function openCon(id){
       <div class="section-t">Elige cómo pedir</div>
       <button class="add-cta" id="goInd">🙋 Pedir yo solo (individual)</button>
       <button class="add-cta ghost" id="goGrp" style="margin-top:8px">👥 Unirme o crear un grupo</button>
+      <button class="add-cta ghost" id="goEdit" style="margin-top:8px">✏️ Ya tengo un pedido aquí (editarlo)</button>
     </div>`;
     $('#closeSheet').onclick=closeProduct;
     $('#goInd').onclick=()=>{ st.modo='individual'; st.grupoSel=null; st.pantalla='pedido'; render(); };
     $('#goGrp').onclick=()=>{ st.modo='grupo'; st.pantalla='grupos'; cargarGrupos(); };
+    $('#goEdit').onclick=()=>{ st.pantalla='editlogin'; render(); };
+  }
+
+  /* -------- Pantalla EDITAR: login del cliente -------- */
+  function screenEditLogin(){
+    $('#sheet').innerHTML = hd() + `<div class="bd">
+      <button class="con-back" id="back">← Volver</button>
+      <div class="marca">Editar mi pedido</div>
+      <h2>${esc(c.nombre)}</h2>
+      <div class="genero">Si ya hiciste un pedido en esta campaña, ingresa con tu nombre y la contraseña que te dimos para editarlo. Los cambios quedan pendientes hasta que los aprobemos.</div>
+      <div class="miniform" style="margin-top:12px"><input id="edcUser" placeholder="Tu nombre *" autocomplete="name"></div>
+      <div class="miniform" style="margin-top:10px"><input id="edcPass" type="password" placeholder="Contraseña *" autocomplete="current-password"></div>
+      <button class="add-cta" id="edcBtn" style="margin-top:14px">Buscar mi pedido</button>
+      <div id="edcResult" style="margin-top:12px"></div>
+    </div>`;
+    $('#closeSheet').onclick=closeProduct;
+    $('#back').onclick=()=>{ st.pantalla='inicio'; render(); };
+    $('#edcBtn').onclick=buscarMiPedidoCon;
+    $('#edcPass').addEventListener('keydown',e=>{ if(e.key==='Enter') buscarMiPedidoCon(); });
+  }
+  async function buscarMiPedidoCon(){
+    const uu=($('#edcUser').value||'').trim(), pp=($('#edcPass').value||'');
+    if(!uu||!pp){ toast('Escribe tu nombre y contraseña'); return; }
+    $('#edcResult').innerHTML='<div class="state" style="padding:14px"><div class="spinner"></div></div>';
+    const { data, error } = await sb.rpc('cliente_login', { p_usuario:uu, p_pass:pp });
+    if(error){ $('#edcResult').innerHTML='<div class="genero">Ocurrió un error. Intenta de nuevo.</div>'; return; }
+    const mis=(data||[]).filter(o=>o.tipo==='consolidado' && o.consolidado_id===c.id);
+    if(!mis.length){ $('#edcResult').innerHTML='<div class="genero">No encontramos un pedido tuyo en esta campaña, o tu acceso aún no está activo.</div>'; return; }
+    const ped=mis[0];
+    st.editId=ped.id; st.editUser=uu; st.editPass=pp; st.modo=ped.modo||'individual';
+    st.inversion=String(ped.inversion_declarada||'');
+    st.cart={}; (ped.items||[]).forEach(it=>{ if(it.idx!=null) st.cart[it.idx]=it.qty||0; });
+    st.pantalla='editpedido'; render();
+  }
+
+  /* -------- Pantalla EDITAR: ítems + monto -------- */
+  function screenEditPedido(){
+    const r=resumen();
+    $('#sheet').innerHTML = hd() + `<div class="bd">
+      <button class="con-back" id="back">← Volver</button>
+      <div class="marca">Editar mi pedido ✏️</div>
+      <h2>${esc(c.nombre)}</h2>
+      <div class="genero">Cambia cantidades, agrega o quita perfumes, o ajusta tu monto. Al enviar, tu cambio queda <b>pendiente de aprobación</b>.</div>
+      <div class="section-t">1) ¿Cuánto quieres invertir?</div>
+      <div class="miniform"><input id="inv" type="number" inputmode="numeric" placeholder="Monto en ${esc(CONFIG.MONEDA||'S/')}" value="${st.inversion}"></div>
+      <div class="section-t">2) Tus perfumes <span style="color:var(--muted);font-weight:400">(mín. ${minMod} modelos)</span></div>
+      <div id="perfList">${its.map((_,i)=>filaPerfume(i)).join('')}</div>
+      <div class="con-sum">
+        <div class="cell"><small>Tu total</small><b id="sumTotal">${fmt(r.t)}</b></div>
+        <div class="cell"><small>Inversión</small><b>${fmt(Number(st.inversion)||0)}</b></div>
+        <div class="cell"><small>Modelos</small><b id="sumMods" style="color:${r.mods>=minMod?'var(--gold-1)':'#e6a24b'}">${r.mods} / ${minMod}</b></div>
+        <div class="cell"><small>Diferencia</small><b id="sumDif">${fmt(r.t-(Number(st.inversion)||0))}</b></div>
+      </div>
+      <button class="add-cta" id="edcSend" style="margin-top:14px">Enviar cambios · ${fmt(r.t)}</button>
+      ${st.modo==='grupo'?'<div class="genero" style="margin-top:8px;font-size:.82rem">Tu pedido es de grupo: el precio final se ajusta según lo que junte el grupo.</div>':''}
+    </div>`;
+    $('#closeSheet').onclick=closeProduct;
+    $('#back').onclick=()=>{ st.pantalla='inicio'; render(); };
+    const inv=$('#inv'); if(inv){ inv.onchange=()=>{ st.inversion=inv.value; render(); }; }
+    function recompute(){
+      const bi=bIdxActual(); let t=0, mods=0;
+      its.forEach((it,i)=>{ if(itemAgotado(it)) return; const q=st.cart[i]||0; const precio=precioItem(c,i,bi);
+        const subEl=$('#perfList [data-sub="'+i+'"]'); if(subEl) subEl.textContent=(q>0)?fmt(precio*q):'';
+        const prEl=$('#perfList [data-price="'+i+'"]'); if(prEl) prEl.textContent=fmt(precio);
+        if(q>0){ t+=precio*q; mods++; } });
+      const inv2=Number(st.inversion)||0;
+      const stt=$('#sumTotal'); if(stt) stt.textContent=fmt(t);
+      const sm=$('#sumMods'); if(sm){ sm.textContent=mods+' / '+minMod; sm.style.color=(mods>=minMod?'var(--gold-1)':'#e6a24b'); }
+      const sd=$('#sumDif'); if(sd) sd.textContent=fmt(t-inv2);
+      const cs=$('#edcSend'); if(cs) cs.textContent='Enviar cambios · '+fmt(t);
+    }
+    document.querySelectorAll('#perfList [data-cp]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.cp; st.cart[i]=(st.cart[i]||0)+1; const inp=$('#perfList [data-cq="'+i+'"]'); if(inp) inp.value=st.cart[i]; recompute(); });
+    document.querySelectorAll('#perfList [data-cm]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.cm; st.cart[i]=Math.max(0,(st.cart[i]||0)-1); const inp=$('#perfList [data-cq="'+i+'"]'); if(inp) inp.value=st.cart[i]; recompute(); });
+    document.querySelectorAll('#perfList [data-cq]').forEach(inp=>{ inp.oninput=()=>{ const i=+inp.dataset.cq; let v=parseInt((inp.value||'').replace(/[^\d]/g,''),10); if(isNaN(v)||v<0)v=0; st.cart[i]=v; recompute(); }; });
+    $('#edcSend').onclick=enviarEdicionCon;
+  }
+  async function enviarEdicionCon(){
+    const inversion=Number(st.inversion)||0; const r=resumen();
+    if(!inversion){ toast('Escribe cuánto vas a invertir'); return; }
+    if(r.mods<minMod){ toast(`Elige al menos ${minMod} modelos distintos`); return; }
+    const items=Object.keys(st.cart).filter(k=>st.cart[k]>0).map(k=>({idx:Number(k), qty:st.cart[k]}));
+    if(!items.length){ toast('Tu pedido quedó vacío'); return; }
+    $('#edcSend').textContent='Enviando...'; $('#edcSend').disabled=true;
+    const { data, error } = await sb.rpc('cliente_editar_consolidado', { p_usuario:st.editUser, p_pass:st.editPass, p_id:st.editId, p_inversion:inversion, p_items:items });
+    if(error){ const m=(error.message||''); toast(m.includes('MIN_MODELOS')?`Elige al menos ${minMod} modelos`:m.includes('AGOTADO')?'Un perfume quedó agotado':m.includes('CREDENCIAL')?'Tu acceso no es válido':'No se pudo enviar'); $('#edcSend').disabled=false; render(); return; }
+    toast('Cambios enviados ✅ (pendientes de aprobación)');
+    const msg=encodeURIComponent(`Hola, edité mi pedido del consolidado "${c.nombre}". Nuevo total aprox: ${fmt((data&&data.total)||r.t)}. Por favor apruébalo. ¡Gracias!`);
+    setTimeout(()=>{ if(confirm('¿Avisar por WhatsApp que enviaste tus cambios?')) window.open(`https://wa.me/${CONFIG.WHATSAPP}?text=${msg}`,'_blank'); }, 250);
+    closeProduct();
   }
 
   /* -------- Pantalla GRUPOS -------- */
@@ -1106,6 +1196,8 @@ function openCon(id){
   function render(){
     if(st.pantalla==='inicio') screenInicio();
     else if(st.pantalla==='grupos'){ if(!st.grupos) st.grupos=null; screenGrupos(); }
+    else if(st.pantalla==='editlogin') screenEditLogin();
+    else if(st.pantalla==='editpedido') screenEditPedido();
     else screenPedido();
   }
   st.grupos = st.grupos; // (mantener)
