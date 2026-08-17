@@ -1454,7 +1454,7 @@ function renderAccesos(){
     }
     return '<div style="border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px">'
       +'<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">'
-      +'<div><b>'+tipo+'</b> · '+esc(r.codigo||'—')+' · '+esc(r.cliente_nombre||'—')+'<br><span style="color:var(--muted);font-size:.85rem">'+esc(r.estado||'')+' · '+acceso+'</span></div>'
+      +'<div><b>'+tipo+'</b> · '+esc(r.codigo||'—')+' <button class="btn ghost" data-cod="'+i+'" style="padding:3px 9px;font-size:.78rem">✎ código</button><br>'+esc(r.cliente_nombre||'—')+'<br><span style="color:var(--muted);font-size:.85rem">'+esc(r.estado||'')+' · '+acceso+'</span></div>'
       +'<button class="btn" data-cred="'+i+'">'+(r.cliente_usuario?'Cambiar contraseña':'Generar acceso')+'</button>'
       +'</div>'+pend+'</div>';
   };
@@ -1462,6 +1462,7 @@ function renderAccesos(){
   cont.innerHTML = (pendientes.length?'<div style="font-weight:600;margin:4px 0 10px">Cambios por revisar ('+pendientes.length+')</div>'+pendientes.map(r=>card(r,ACCESOS.indexOf(r))).join(''):'')
     + '<div style="font-weight:600;margin:14px 0 10px">Todos los pedidos</div>' + resto.map(r=>card(r,ACCESOS.indexOf(r))).join('');
   cont.querySelectorAll('[data-cred]').forEach(b=>b.onclick=()=>genCred(+b.dataset.cred));
+  cont.querySelectorAll('[data-cod]').forEach(b=>b.onclick=()=>genCodigo(+b.dataset.cod));
   cont.querySelectorAll('[data-aprobar]').forEach(b=>b.onclick=()=>aprobarCambio(+b.dataset.aprobar));
   cont.querySelectorAll('[data-rechazar]').forEach(b=>b.onclick=()=>rechazarCambio(+b.dataset.rechazar));
 }
@@ -1472,17 +1473,28 @@ async function genCred(i){
   let pass=(prompt('Contraseña (déjala vacía para generar una automática):','')||'').trim();
   if(!pass) pass=Math.random().toString(36).slice(2,8).toUpperCase();
   const { error } = await sb.rpc('admin_generar_credencial', { p_tipo:r._tipo, p_id:r.id, p_usuario:usuario, p_pass:pass });
-  if(error){ toast('Error: '+error.message,true); return; }
+  if(error){ alert('No se pudo generar el acceso:\n\n'+(error.message||error)+'\n\nSi dice que no encuentra la función, vuelve a correr cuentas-clientes.sql en Supabase.'); return; }
   const texto='Acceso a tu pedido '+(r.codigo||'')+':\nUsuario: '+usuario+'\nContraseña: '+pass;
   try{ await navigator.clipboard.writeText(texto); }catch(e){}
   alert('Acceso generado y copiado al portapapeles:\n\n'+texto+'\n\nEnvíaselo al cliente por WhatsApp.');
   loadAccesos();
 }
+async function genCodigo(i){
+  const r=ACCESOS[i]; if(!r) return;
+  const pref = r._tipo==='preorden'?'PRE-':'CON-';
+  const sug = r.codigo || (pref+Math.random().toString(36).slice(2,6).toUpperCase());
+  const cod=(prompt('Código de seguimiento (lo que el cliente escribe en "Consultar" para ver su pedido):', sug)||'').trim();
+  if(!cod) return;
+  const { error } = await sb.rpc('admin_set_codigo', { p_tipo:r._tipo, p_id:r.id, p_codigo:cod });
+  if(error){ alert('No se pudo cambiar el código:\n\n'+(error.message||error)); return; }
+  toast('Código actualizado'); loadAccesos();
+  if(r._tipo==='preorden') loadPrePedidos(); else loadConPedidos();
+}
 async function aprobarCambio(i){
   const r=ACCESOS[i]; if(!r) return;
   if(!confirm('¿Aprobar este cambio? Se aplicará al pedido.')) return;
   const { error } = await sb.rpc('admin_aprobar_cambio', { p_tipo:r._tipo, p_id:r.id });
-  if(error){ toast('Error: '+error.message,true); return; }
+  if(error){ alert('No se pudo aprobar:\n\n'+(error.message||error)); return; }
   toast('Cambio aprobado'); await loadAccesos();
   if(r._tipo==='preorden') loadPrePedidos(); else loadConPedidos();
 }
@@ -1490,7 +1502,7 @@ async function rechazarCambio(i){
   const r=ACCESOS[i]; if(!r) return;
   if(!confirm('¿Rechazar este cambio? Se mantiene lo último aprobado.')) return;
   const { error } = await sb.rpc('admin_rechazar_cambio', { p_tipo:r._tipo, p_id:r.id });
-  if(error){ toast('Error: '+error.message,true); return; }
+  if(error){ alert('No se pudo rechazar:\n\n'+(error.message||error)); return; }
   toast('Cambio rechazado'); loadAccesos();
 }
 
