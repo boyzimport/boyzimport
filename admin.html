@@ -1452,11 +1452,29 @@ function renderAccesos(){
         +'<div style="font-size:.86rem;display:flex;flex-direction:column;gap:3px">'+(filas.join('')||'<span style="color:var(--muted)">(sin diferencias de texto)</span>')+'</div>'
         +'<div style="display:flex;gap:8px;margin-top:10px"><button class="btn" data-aprobar="'+i+'">✅ Aprobar</button><button class="btn ghost" data-rechazar="'+i+'">✖ Rechazar</button></div></div>';
     }
+    const pg=resumenPagosAdmin(r);
+    const abonosRows=(r.abonos||[]).map(a=>{
+      const f=a.fecha?new Date(a.fecha).toLocaleDateString():'';
+      return '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:.84rem;padding:4px 0;border-top:1px solid var(--line)">'
+        +'<span>'+f+' · '+(esc(a.nota||'(sin nota)'))+' · '+(a.confirmado?'<span style="color:var(--gold-1)">✅ confirmado</span>':'<span style="color:#e6a24b">⏳ por confirmar</span>')+'</span>'
+        +'<span style="display:flex;gap:6px;align-items:center"><b>'+fmt(a.monto)+'</b>'
+        +(a.confirmado?'':'<button class="btn" data-abconf="'+i+'|'+a.id+'" style="padding:2px 8px;font-size:.75rem">Confirmar</button>')
+        +'<button class="btn ghost" data-abed="'+i+'|'+a.id+'" style="padding:2px 8px;font-size:.75rem">Editar</button>'
+        +'<button class="btn danger" data-abdel="'+i+'|'+a.id+'" style="padding:2px 8px;font-size:.75rem">✕</button></span></div>';
+    }).join('') || '<div style="color:var(--muted);font-size:.84rem">Sin pagos registrados.</div>';
+    const pagos='<div style="margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600">💵 Pagos</span>'
+      +'<button class="btn ghost" data-abadd="'+i+'" style="padding:4px 10px;font-size:.78rem">+ Agregar pago</button></div>'
+      +'<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;margin:6px 0"><span>Pagado: <b>'+fmt(pg.pagado)+'</b></span>'
+      +(pg.porConfirmar>0?'<span style="color:#e6a24b">Por confirmar: <b>'+fmt(pg.porConfirmar)+'</b></span>':'')
+      +'<span>Saldo: <b style="color:'+(pg.saldo>0?'#e6a24b':'var(--gold-1)')+'">'+fmt(Math.max(0,pg.saldo))+'</b></span></div>'
+      +abonosRows+'</div>';
     return '<div style="border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px">'
       +'<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">'
       +'<div><b>'+tipo+'</b> · '+esc(r.codigo||'—')+' <button class="btn ghost" data-cod="'+i+'" style="padding:3px 9px;font-size:.78rem">✎ código</button><br>'+esc(r.cliente_nombre||'—')+'<br><span style="color:var(--muted);font-size:.85rem">'+esc(r.estado||'')+' · '+acceso+'</span></div>'
       +'<button class="btn" data-cred="'+i+'">'+(r.cliente_usuario?'Cambiar contraseña':'Generar acceso')+'</button>'
       +'</div>'
+      +pagos
       +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn ghost" data-xls="'+i+'" style="padding:6px 12px;font-size:.82rem">📊 Excel del pedido</button>'
       +(r.grupo_id?'<button class="btn ghost" data-xlsg="'+i+'" style="padding:6px 12px;font-size:.82rem">📊 Excel del grupo completo</button>':'')+'</div>'
       +pend+'</div>';
@@ -1468,6 +1486,10 @@ function renderAccesos(){
   cont.querySelectorAll('[data-cod]').forEach(b=>b.onclick=()=>genCodigo(+b.dataset.cod));
   cont.querySelectorAll('[data-xls]').forEach(b=>b.onclick=()=>exportPedidoAdmin(+b.dataset.xls));
   cont.querySelectorAll('[data-xlsg]').forEach(b=>b.onclick=()=>exportGrupoAdmin(+b.dataset.xlsg));
+  cont.querySelectorAll('[data-abadd]').forEach(b=>b.onclick=()=>agregarAbonoAdmin(+b.dataset.abadd));
+  cont.querySelectorAll('[data-abconf]').forEach(b=>b.onclick=()=>{ const [i,id]=b.dataset.abconf.split('|'); abonoAccion('admin_confirmar_abono',+i,id); });
+  cont.querySelectorAll('[data-abed]').forEach(b=>b.onclick=()=>{ const [i,id]=b.dataset.abed.split('|'); editarAbonoAdmin(+i,id); });
+  cont.querySelectorAll('[data-abdel]').forEach(b=>b.onclick=()=>{ const [i,id]=b.dataset.abdel.split('|'); if(confirm('¿Eliminar este pago?')) abonoAccion('admin_eliminar_abono',+i,id); });
   cont.querySelectorAll('[data-aprobar]').forEach(b=>b.onclick=()=>aprobarCambio(+b.dataset.aprobar));
   cont.querySelectorAll('[data-rechazar]').forEach(b=>b.onclick=()=>rechazarCambio(+b.dataset.rechazar));
 }
@@ -1475,6 +1497,39 @@ async function cargarXLSX(){
   if(window.XLSX) return window.XLSX;
   await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=res; s.onerror=()=>rej(new Error('cdn')); document.head.appendChild(s); });
   return window.XLSX;
+}
+function resumenPagosAdmin(r){
+  let pagado=0, porConfirmar=0;
+  (r.abonos||[]).forEach(a=>{ const m=Number(a.monto)||0; if(a.confirmado) pagado+=m; else porConfirmar+=m; });
+  return { pagado, porConfirmar, saldo:(Number(r.total)||0)-pagado };
+}
+async function abonoAccion(fn, i, abonoId){
+  const r=ACCESOS[i]; if(!r) return;
+  const { error } = await sb.rpc(fn, { p_tipo:r._tipo, p_id:r.id, p_abono_id:abonoId });
+  if(error){ alert('Error:\n'+(error.message||error)); return; }
+  toast('Listo'); loadAccesos();
+}
+async function agregarAbonoAdmin(i){
+  const r=ACCESOS[i]; if(!r) return;
+  const monto=parseFloat(prompt('Monto del pago:','')); if(!monto||monto<=0) return;
+  const nota=(prompt('Nota (opcional):','')||'').trim();
+  const { error } = await sb.rpc('admin_agregar_abono', { p_tipo:r._tipo, p_id:r.id, p_monto:monto, p_nota:nota });
+  if(error){ alert('Error:\n'+(error.message||error)); return; }
+  toast('Pago agregado'); loadAccesos();
+}
+async function editarAbonoAdmin(i, abonoId){
+  const r=ACCESOS[i]; if(!r) return;
+  const ab=(r.abonos||[]).find(a=>a.id===abonoId); if(!ab) return;
+  const monto=parseFloat(prompt('Nuevo monto:', ab.monto)); if(!monto||monto<=0) return;
+  const nota=(prompt('Nota:', ab.nota||'')||'').trim();
+  const { error } = await sb.rpc('admin_editar_abono', { p_tipo:r._tipo, p_id:r.id, p_abono_id:abonoId, p_monto:monto, p_nota:nota });
+  if(error){ alert('Error:\n'+(error.message||error)); return; }
+  toast('Pago actualizado'); loadAccesos();
+}
+function _abonosAoa(abonos, M){
+  const filas=[['Fecha','Nota','Registrado por','Estado','Monto ('+M+')']];
+  (abonos||[]).forEach(a=>{ filas.push([ a.fecha?new Date(a.fecha).toLocaleString():'', a.nota||'', a.por||'', a.confirmado?'Confirmado':'Por confirmar', Number(a.monto)||0 ]); });
+  return filas;
 }
 function _itemsAoa(items){
   const filas=[['Perfume','Marca','Cantidad','Precio unit.','Subtotal']];
@@ -1484,13 +1539,33 @@ function _itemsAoa(items){
 async function exportPedidoAdmin(i){
   const r=ACCESOS[i]; if(!r) return;
   let XLSX; try{ XLSX=await cargarXLSX(); }catch(e){ alert('No se pudo cargar el exportador (revisa tu internet).'); return; }
-  const cab=[[ (r._tipo==='preorden'?'Preorden':'Consolidado')+' '+(r.codigo||'') ],['Cliente', r.cliente_nombre||''],['Teléfono', r.cliente_telefono||''],['Estado', r.estado||''],[]];
-  const filas=cab.concat(_itemsAoa(r.items),[[],['','','','Total', Number(r.total)||0]]);
+  const M='S/';
+  const filas=[];
+  filas.push([(r._tipo==='preorden'?'PREORDEN':'CONSOLIDADO')+(r.consolidado_nombre?' · '+r.consolidado_nombre:'')]);
+  filas.push(['Código', r.codigo||'']);
+  filas.push(['Cliente', r.cliente_nombre||'']);
+  filas.push(['Teléfono', r.cliente_telefono||'']);
+  if(r._tipo==='consolidado' && r.bracket_etiqueta) filas.push(['Escala de precio', r.bracket_etiqueta]);
+  filas.push(['Estado', r.estado||'']);
+  filas.push([]);
+  filas.push(['Perfume','Marca','Cantidad','Precio unit. ('+M+')','Subtotal ('+M+')']);
+  (r.items||[]).forEach(it=>{ const q=it.qty||1, pu=(it.precio_unit!=null?it.precio_unit:it.precio), sub=(it.subtotal!=null?it.subtotal:(pu!=null?pu*q:'')); filas.push([it.nombre||'',it.marca||'',q,pu!=null?pu:'',sub]); });
+  filas.push([]);
+  filas.push(['','','','TOTAL DEL PEDIDO', Number(r.total)||0]);
   if(r._tipo==='consolidado' && r.inversion_declarada!=null){
     filas.push(['','','','Inversión declarada', Number(r.inversion_declarada)||0]);
-    filas.push(['','','','Restante', (Number(r.inversion_declarada)||0)-(Number(r.total)||0)]);
+    filas.push(['','','','Diferencia', (Number(r.inversion_declarada)||0)-(Number(r.total)||0)]);
   }
-  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filas), 'Pedido');
+  const pg=resumenPagosAdmin(r);
+  filas.push([]); filas.push(['PAGOS / ABONOS']);
+  _abonosAoa(r.abonos, M).forEach(f=>filas.push(f));
+  filas.push([]);
+  filas.push(['','','','Pagado (confirmado)', pg.pagado]);
+  if(pg.porConfirmar>0) filas.push(['','','','Reportado sin confirmar', pg.porConfirmar]);
+  filas.push(['','','','Saldo por pagar', Math.max(0,pg.saldo)]);
+  const ws=XLSX.utils.aoa_to_sheet(filas);
+  ws['!cols']=[{wch:26},{wch:16},{wch:12},{wch:16},{wch:16}];
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Pedido');
   XLSX.writeFile(wb, 'pedido-'+(r.codigo||'export')+'.xlsx');
 }
 async function exportGrupoAdmin(i){
@@ -1500,16 +1575,21 @@ async function exportGrupoAdmin(i){
   if(error){ alert('No se pudo leer el grupo:\n'+error.message); return; }
   const lista=miembros||[];
   // Hoja Resumen
-  const resumen=[['Grupo', r.codigo||''],['Campaña', r.consolidado_nombre||''],[],['Cliente','Teléfono','Estado','Inversión','Total']];
-  let totGrupo=0, invGrupo=0;
-  lista.forEach(m=>{ totGrupo+=Number(m.total)||0; invGrupo+=Number(m.inversion_declarada)||0; resumen.push([m.cliente_nombre||'',m.cliente_telefono||'',m.estado||'',Number(m.inversion_declarada)||0,Number(m.total)||0]); });
-  resumen.push([]); resumen.push(['','','TOTALES', invGrupo, totGrupo]);
-  // Hoja Detalle
+  const resumen=[['Grupo', r.codigo||''],['Campaña', r.consolidado_nombre||''],[],['Cliente','Teléfono','Estado','Inversión','Total','Pagado','Saldo']];
+  let totGrupo=0, invGrupo=0, pagGrupo=0;
+  lista.forEach(m=>{ const pg=resumenPagosAdmin(m); totGrupo+=Number(m.total)||0; invGrupo+=Number(m.inversion_declarada)||0; pagGrupo+=pg.pagado;
+    resumen.push([m.cliente_nombre||'',m.cliente_telefono||'',m.estado||'',Number(m.inversion_declarada)||0,Number(m.total)||0,pg.pagado,Math.max(0,pg.saldo)]); });
+  resumen.push([]); resumen.push(['','','TOTALES', invGrupo, totGrupo, pagGrupo, Math.max(0,totGrupo-pagGrupo)]);
+  // Hoja Detalle (perfumes por miembro)
   const detalle=[['Cliente','Perfume','Marca','Cantidad','Precio unit.','Subtotal']];
   lista.forEach(m=>{ (m.items||[]).forEach(it=>{ const q=it.qty||1, pu=(it.precio_unit!=null?it.precio_unit:it.precio), sub=(it.subtotal!=null?it.subtotal:(pu!=null?pu*q:'')); detalle.push([m.cliente_nombre||'',it.nombre||'',it.marca||'',q,pu!=null?pu:'',sub]); }); });
+  // Hoja Pagos (todos los abonos del grupo)
+  const pagos=[['Cliente','Fecha','Nota','Estado','Monto']];
+  lista.forEach(m=>{ (m.abonos||[]).forEach(a=>{ pagos.push([m.cliente_nombre||'', a.fecha?new Date(a.fecha).toLocaleString():'', a.nota||'', a.confirmado?'Confirmado':'Por confirmar', Number(a.monto)||0]); }); });
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumen), 'Resumen');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detalle), 'Detalle');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pagos), 'Pagos');
   XLSX.writeFile(wb, 'grupo-'+(r.codigo||'export')+'.xlsx');
 }
 async function genCred(i){
