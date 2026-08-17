@@ -42,8 +42,18 @@ const CONFIG = {
   // --- Texto de env\u00edo que se muestra en el producto ---
   ENVIO_TEXTO: "Env\u00edos a todo el Per\u00fa \u00b7 coordinamos por WhatsApp",
 
-  // --- Banner (cinta) superior en movimiento. Deja "" para ocultarlo ---
-  BANNER_ENVIO: "ENV\u00cdOS A TODO EL PER\u00da  |  DELIVERY GRATIS + S/. 200",
+  // --- Banner (cinta) superior en movimiento. ---
+  //  Puede ser UN texto  ->  "ENV\u00cdOS A TODO EL PER\u00da"
+  //  o una LISTA de frases (rotan separadas por \u25c6). Deja "" o [] para ocultarlo.
+  BANNER_ENVIO: [
+    "ENV\u00cdOS A TODO EL PER\u00da",
+    "DELIVERY GRATIS DESDE S/. 200",
+    "PREVENTA Y CONSOLIDADOS ABIERTOS",
+  ],
+
+  // --- Texto de la PANTALLA DE CARGA (estilo elegante). ---
+  //  La 1\u00aa palabra sale grande y el resto debajo con espaciado. Deja "" para usar el logo.
+  CARGA_TEXTO: "BOYZ IMPORT",
 
   // --- Stock: umbral para mostrar "\u00a1\u00daltimas X!" ---
   STOCK_BAJO: 5,
