@@ -1398,6 +1398,8 @@ function renderGrupos(){
       <div class="row" style="margin-top:8px">
         <select data-gest="${g.id}">${GRP_ESTADOS.map(e=>`<option ${est===e?'selected':''}>${e}</option>`).join('')}</select>
         <button class="btn" data-gsave="${g.id}">Guardar estado del grupo</button>
+        <button class="btn ghost" data-gmeta="${g.id}">🎯 Meta / precio del grupo</button>
+        <button class="btn ghost" data-grecalc="${g.id}">🔄 Recalcular precios</button>
         <button class="btn danger" data-gdel="${g.id}">Eliminar grupo</button>
       </div>
     </div>`;
@@ -1407,7 +1409,25 @@ function renderGrupos(){
   box.querySelectorAll('[data-msave]').forEach(b=>b.onclick=()=>{ const id=b.dataset.msave; const sel=box.querySelector('[data-mest="'+id+'"]'); cambiarEstadoCon(id, sel.value); });
   box.querySelectorAll('[data-mdel]').forEach(b=>b.onclick=()=>delConPedido(b.dataset.mdel));
   box.querySelectorAll('[data-gsave]').forEach(b=>b.onclick=()=>{ const id=b.dataset.gsave; const sel=box.querySelector('[data-gest="'+id+'"]'); cambiarEstadoGrupo(id, sel.value); });
+  box.querySelectorAll('[data-gmeta]').forEach(b=>b.onclick=()=>cambiarMetaGrupo(b.dataset.gmeta));
+  box.querySelectorAll('[data-grecalc]').forEach(b=>b.onclick=()=>recalcularGrupoAdmin(b.dataset.grecalc));
   box.querySelectorAll('[data-gdel]').forEach(b=>b.onclick=()=>delGrupo(b.dataset.gdel));
+}
+async function recalcularGrupoAdmin(id){
+  const { error } = await sb.rpc('admin_recalcular_grupo', { p_grupo_id:id });
+  if(error){ alert('No se pudo recalcular:\n'+(error.message||error)); return; }
+  toast('Precios del grupo recalculados'); loadConPedidos(); loadGrupos();
+}
+async function cambiarMetaGrupo(id){
+  const g=(GRUPOS||[]).find(x=>x.id===id)||{};
+  const val=prompt('Meta del grupo (el monto que fija la escala de precio para TODO el grupo).\nDéjala vacía para que el precio se calcule por la inversión que junten.', g.meta!=null?g.meta:'');
+  if(val===null) return;
+  const meta=val.trim()===''?0:parseFloat(val);
+  if(val.trim()!=='' && (isNaN(meta)||meta<0)){ alert('Escribe un número válido.'); return; }
+  const { data, error } = await sb.rpc('admin_set_meta_grupo', { p_grupo_id:id, p_meta:meta });
+  if(error){ alert('No se pudo cambiar la meta:\n'+(error.message||error)); return; }
+  toast('Meta actualizada · escala '+((data&&data.escala)||'—')+' aplicada a todo el grupo');
+  loadConPedidos(); loadGrupos();
 }
 
 /* ============ Overlay + acciones ============ */
