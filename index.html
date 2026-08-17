@@ -317,6 +317,33 @@ header::after{content:""; position:absolute; left:0; right:0; bottom:0; height:1
 .est-badge.pendiente{color:var(--gold-1); border:1px solid var(--gold-deep); background:rgba(184,137,58,.12)}
 .est-badge.confirmado,.est-badge.entregado{color:var(--ok); border:1px solid rgba(123,216,143,.5); background:rgba(123,216,143,.12)}
 .est-badge.rechazado{color:var(--danger); border:1px solid var(--danger); background:rgba(224,121,107,.1)}
+/* --- Consolidado por inversión --- */
+.con-table{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin:8px 0}
+.con-table table{border-collapse:collapse;width:100%;font-size:.8rem}
+.con-table th,.con-table td{padding:8px 11px;border-bottom:1px solid var(--line-soft);white-space:nowrap;text-align:right}
+.con-table th:first-child,.con-table td:first-child{text-align:left;position:sticky;left:0;background:var(--panel);z-index:1}
+.con-table thead th{color:var(--gold-1);background:var(--panel-2);position:sticky;top:0}
+.con-table td.agot{color:#e77;font-weight:600}
+.con-row{display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line-soft)}
+.con-row .cr-info{display:flex;flex-direction:column;min-width:0}
+.con-row .cr-info b{font-size:.92rem;color:var(--cream);white-space:normal}
+.con-row .cr-info span{font-size:.75rem;color:var(--muted)}
+.con-row .cr-precio{font-size:.86rem;color:var(--gold-1);min-width:58px;text-align:right}
+.con-row .cr-sub{font-size:.86rem;min-width:56px;text-align:right;color:var(--cream)}
+.con-row.agot{opacity:.5}
+.agot-tag{color:#e77;font-weight:700;font-size:.72rem}
+.stepper.sm{transform:scale(.92)}
+.con-sum{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.con-sum .cell{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+.con-sum .cell small{display:block;color:var(--muted);font-size:.7rem;margin-bottom:2px}
+.con-sum .cell b{font-size:1.02rem;color:var(--gold-1)}
+.grp-item{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px}
+.grp-item .gi-main{min-width:0}
+.grp-item .gi-main b{display:block;color:var(--cream)}
+.grp-item .gi-main span{font-size:.77rem;color:var(--muted)}
+.grp-item button{background:var(--gold-2);color:#06121d;border:0;border-radius:9px;padding:9px 13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.con-back{background:none;border:0;color:var(--gold-2);cursor:pointer;font-size:.9rem;padding:2px 0 6px;font-weight:600}
+.add-cta.ghost{background:var(--panel-2);color:var(--gold-1);border:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -353,6 +380,7 @@ header::after{content:""; position:absolute; left:0; right:0; bottom:0; height:1
 
 <div class="viewtabs" id="viewtabs" style="display:none">
   <button class="vtab active" data-view="catalogo">Catálogo</button>
+  <button class="vtab" data-view="mayor" id="tabMayor" style="display:none">Precio por mayor<span class="fire">📦</span></button>
   <button class="vtab" data-view="promos" id="tabPromos" style="display:none">Promociones<span class="fire">🔥</span></button>
   <button class="vtab" data-view="preorden" id="tabPre" style="display:none">Preorden<span class="fire">✈️</span></button>
   <button class="vtab" data-view="consolidado" id="tabCon" style="display:none">Consolidado<span class="fire">🤝</span></button>
@@ -363,6 +391,7 @@ header::after{content:""; position:absolute; left:0; right:0; bottom:0; height:1
 <div class="filters" id="filters"></div>
 <div class="grid" id="grid"><div class="state"><div class="spinner"></div>Cargando catálogo...</div></div>
 <div class="grid combos-grid" id="combosGrid" style="display:none"></div>
+<div class="grid" id="mayorGrid" style="display:none"></div>
 <div class="grid" id="preGrid" style="display:none"></div>
 <div class="grid" id="conGrid" style="display:none"></div>
 
@@ -516,8 +545,10 @@ async function load(){
   renderFilters(); render(); renderCombos(); renderPre(); renderCon();
 
   // Mostrar/ocultar pestañas según lo que haya cargado
-  const anyTab = COMBOS.length || PREORDENES.length || CONSOLIDADOS.length;
+  const mayorHay = MAYOR_MIN>0;
+  const anyTab = mayorHay || COMBOS.length || PREORDENES.length || CONSOLIDADOS.length;
   const vt=$('#viewtabs'); if(vt) vt.style.display = anyTab ? 'flex' : 'none';
+  const tm=$('#tabMayor'); if(tm) tm.style.display = mayorHay ? 'inline-flex' : 'none';
   const tp=$('#tabPromos'); if(tp) tp.style.display = COMBOS.length ? 'inline-flex' : 'none';
   const tpr=$('#tabPre'); if(tpr) tpr.style.display = PREORDENES.length ? 'inline-flex' : 'none';
   const tc=$('#tabCon'); if(tc) tc.style.display = CONSOLIDADOS.length ? 'inline-flex' : 'none';
@@ -554,13 +585,41 @@ function setView(v){
   document.querySelectorAll('#viewtabs .vtab').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
   $('#filters').style.display     = v==='catalogo' ? 'flex' : 'none';
   $('#grid').style.display        = v==='catalogo' ? 'grid' : 'none';
+  $('#mayorGrid').style.display   = v==='mayor'    ? 'grid' : 'none';
   $('#combosGrid').style.display  = v==='promos'   ? 'grid' : 'none';
   $('#preGrid').style.display     = v==='preorden' ? 'grid' : 'none';
   $('#conGrid').style.display     = v==='consolidado' ? 'grid' : 'none';
-  if(v==='promos') renderCombos();
+  if(v==='mayor') renderMayor();
+  else if(v==='promos') renderCombos();
   else if(v==='preorden') renderPre();
   else if(v==='consolidado') renderCon();
   else render();
+}
+
+/* ================= Precio por mayor (vista) ================= */
+function renderMayor(){
+  const cont=$('#mayorGrid'); if(!cont) return;
+  const banner = `<div class="state" style="grid-column:1/-1;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;line-height:1.6">
+    📦 <b>${esc(CONFIG.LABEL_MAYORISTA||'Precio por mayor')}</b> — Lleva <b>${MAYOR_MIN}</b> perfumes o más (sumando modelos, en un solo pedido) y el catálogo te cobra el precio por mayor <b>automáticamente</b>. Estos son los productos con precio especial.</div>`;
+  const withMay = PRODUCTS.filter(p => presActivas(p).some(x=>Number(x.precio_may)>0));
+  const list = withMay.filter(p => !query || ((p.nombre||'')+' '+(p.marca||'')).toLowerCase().includes(query));
+  if(!list.length){ cont.innerHTML = banner + `<div class="state">Aún no hay productos con precio por mayor.</div>`; return; }
+  cont.innerHTML = banner + list.map(p=>{
+    const main=imgsOf(p)[0]; const pres=presActivas(p);
+    const conMay=pres.filter(x=>Number(x.precio_may)>0);
+    const may=Math.min(...conMay.map(x=>Number(x.precio_may)));
+    const uni=Math.min(...pres.map(x=>Number(x.precio)));
+    return `<button class="card" data-id="${p.id}">
+      <span class="badge-pre" style="background:#2f80c9">Por mayor 📦</span>
+      <div class="imgwrap">${main?`<img src="${esc(main)}" alt="${esc(p.nombre)}" loading="lazy">`:`<span class="ph">${esc((p.nombre||'?')[0])}</span>`}</div>
+      <div class="body">
+        <span class="marca">${esc(p.marca||'')}</span>
+        <span class="nombre">${esc(p.nombre)}</span>
+        <span class="escala-mini">Unidad desde ${fmt(uni)}</span>
+        <div class="foot"><span class="precio"><small>Por mayor desde</small><b>${fmt(may)}</b></span><span class="ver">→</span></div>
+      </div></button>`;
+  }).join('');
+  cont.querySelectorAll('.card').forEach(c=>c.onclick=()=>openProduct(c.dataset.id));
 }
 
 function renderCombos(){
@@ -701,28 +760,33 @@ function openPre(id){
 }
 
 /* ============================================================
-   NUEVO — CONSOLIDADO  (compra grupal: más piden, más barato)
+   NUEVO — CONSOLIDADO por INVERSIÓN (individual + grupo con aprobación)
+   La campaña tiene "brackets" de inversión; el precio de cada perfume
+   depende de cuánto invierte el cliente (o el grupo).
    ============================================================ */
-function escalasOrden(c){ return (Array.isArray(c.escalas)?c.escalas:[]).filter(e=>e&&Number(e.precio)>0).map(e=>({min:Number(e.min)||1,precio:Number(e.precio)})).sort((a,b)=>a.min-b.min); }
-function precioEnEscala(c, unidades){ const es=escalasOrden(c); let pr=null; es.forEach(e=>{ if(unidades>=e.min) pr=e.precio; }); if(pr==null&&es.length) pr=es[0].precio; return pr; }
-function proximaEscala(c, unidades){ const es=escalasOrden(c); for(const e of es){ if(unidades<e.min) return {faltan:e.min-unidades, precio:e.precio, min:e.min}; } return null; }
+function bracketsOrden(c){ return (Array.isArray(c.brackets)?c.brackets:[]).map(b=>({umbral:Number(b.umbral)||0, etiqueta:b.etiqueta||''})).sort((a,b)=>a.umbral-b.umbral); }
+function bracketIdxDe(c, monto){ const bs=bracketsOrden(c); if(!bs.length) return -1; let idx=0; bs.forEach((b,i)=>{ if((Number(monto)||0)>=b.umbral) idx=i; }); return idx; }
+function itemsDe(c){ return Array.isArray(c.items)?c.items:[]; }
+function itemAgotado(it){ return !!(it && (it.agotado || (it.stock!=null && Number(it.stock)<=0))); }
+function precioItem(c, itemIdx, bIdx){ const it=itemsDe(c)[itemIdx]; if(!it) return 0; const p=(it.precios||[])[bIdx]; return Number(p)||0; }
 
 function renderCon(){
   const list = CONSOLIDADOS.filter(c => !query || ((c.nombre||'')+' '+(c.marca||'')).toLowerCase().includes(query));
   if(!list.length){ $('#conGrid').innerHTML = `<div class="state">No hay consolidados abiertos por ahora.</div>`; return; }
   $('#conGrid').innerHTML = list.map(c => {
-    const main=imgsOf(c)[0]; const acum=Number(c.acumulado)||0;
-    const precio=precioEnEscala(c,acum); const nx=proximaEscala(c,acum);
+    const main=imgsOf(c)[0]; const bs=bracketsOrden(c); const its=itemsDe(c);
+    let best=null;
+    if(bs.length && its.length){ const bi=bs.length-1; its.forEach((it,i)=>{ if(itemAgotado(it))return; const p=precioItem(c,i,bi); if(p>0) best=(best==null?p:Math.min(best,p)); }); }
     return `<button class="card" data-con="${c.id}">
       <span class="badge-con">Consolidado 🤝</span>
       <div class="imgwrap">${main ? `<img src="${esc(main)}" alt="${esc(c.nombre)}" loading="lazy">` : `<span class="ph">${esc((c.nombre||'?')[0])}</span>`}</div>
       <div class="body">
-        <span class="marca">${esc(c.marca||'Compra grupal')}</span>
+        <span class="marca">${esc(c.marca||'Campaña')}</span>
         <span class="nombre">${esc(c.nombre)}</span>
-        <span class="stk ok">${acum} pedidos acumulados</span>
-        ${nx?`<span class="escala-mini">Baja a ${fmt(nx.precio)} con ${nx.faltan} más</span>`:'<span class="escala-mini">¡Mejor precio alcanzado! 🎉</span>'}
+        <span class="stk ok">${its.length} perfumes · mín. ${c.min_modelos||1} modelos</span>
+        ${c.fecha_llegada?`<span class="escala-mini">Llegada: ${esc(c.fecha_llegada)}</span>`:''}
         <div class="foot">
-          <span class="precio">${precio!=null?`<small>Precio ahora</small><b>${fmt(precio)}</b>`:'<small>Precio</small><b>Consultar</b>'}</span>
+          <span class="precio">${best!=null?`<small>Desde</small><b>${fmt(best)}</b>`:'<small>Precio</small><b>Según inversión</b>'}</span>
           <span class="ver">→</span>
         </div>
       </div>
@@ -734,92 +798,203 @@ function renderCon(){
 function openCon(id){
   const c = CONSOLIDADOS.find(x=>x.id===id); if(!c) return;
   const imgs=imgsOf(c); const mainImg=imgs[0];
-  const acum=Number(c.acumulado)||0; const es=escalasOrden(c);
-  let qty=1; let files=[];
+  const bs=bracketsOrden(c); const its=itemsDe(c);
+  const minMod=Number(c.min_modelos)||0;
+  const st={ pantalla:'inicio', modo:null, grupoSel:null, inversion:'', cart:{}, files:[], grupos:[], nuevo:{nombre:'',meta:Number(c.meta_grupo)||0,lnombre:'',ltel:''} };
 
-  function precioCon(q){ return precioEnEscala(c, acum+q) ?? (es[0]&&es[0].precio) ?? 0; }
-  function draw(){
-    const q=qty; const precio=precioCon(q); const proj=acum+q;
-    const nx=proximaEscala(c, proj);
-    const meta=Number(c.meta)||0;
-    const progBase = meta>0 ? meta : (es.length?es[es.length-1].min:proj);
-    const pct = Math.min(100, Math.round(proj/Math.max(1,progBase)*100));
-    $('#sheet').innerHTML = `
-      <div class="hd">
-        <button class="close" id="closeSheet" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
-        ${mainImg ? `<img src="${esc(mainImg)}" alt="${esc(c.nombre)}">` : `<div class="ph" style="font-size:4rem">${esc((c.nombre||'?')[0])}</div>`}
+  function montoBaseGrupo(){ return (st.modo==='grupo' && st.grupoSel && st.grupoSel!=='nuevo') ? (Number(st.grupoSel.total)||0) : 0; }
+  function bIdxActual(){ const monto = (st.modo==='grupo') ? (montoBaseGrupo()+(Number(st.inversion)||0)) : (Number(st.inversion)||0); return bracketIdxDe(c, monto); }
+  function resumen(){ let t=0, mods=0, unid=0; const bi=bIdxActual(); Object.keys(st.cart).forEach(k=>{ const q=st.cart[k]||0; if(q>0){ t+=precioItem(c,+k,bi)*q; mods++; unid+=q; } }); return {t,mods,unid}; }
+  function etiquetaActual(){ const bi=bIdxActual(); return bi>=0 && bs[bi] ? bs[bi].etiqueta : ''; }
+
+  const hd = () => `<div class="hd">
+      <button class="close" id="closeSheet" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+      ${mainImg ? `<img src="${esc(mainImg)}" alt="${esc(c.nombre)}">` : `<div class="ph" style="font-size:4rem">${esc((c.nombre||'?')[0])}</div>`}
+    </div>`;
+
+  function tablaPrecios(){
+    if(!bs.length || !its.length) return '';
+    return `<div class="con-table"><table><thead><tr><th>Perfume</th><th>Stock</th>${bs.map(b=>`<th>${esc(b.etiqueta||fmt(b.umbral))}</th>`).join('')}</tr></thead>
+      <tbody>${its.map(it=>{ const ag=itemAgotado(it);
+        return `<tr><td>${esc(it.nombre||'')}<br><small style="color:var(--muted)">${esc(it.marca||'')}</small></td>
+          <td class="${ag?'agot':''}">${ag?'AGOTADO':(it.stock!=null?it.stock:'—')}</td>
+          ${bs.map((b,bi)=>`<td>${ag?'—':fmt(Number((it.precios||[])[bi])||0)}</td>`).join('')}</tr>`;
+      }).join('')}</tbody></table></div>`;
+  }
+
+  function filaPerfume(i){
+    const it=its[i]; const bi=bIdxActual(); const q=st.cart[i]||0; const precio=precioItem(c,i,bi); const ag=itemAgotado(it);
+    return `<div class="con-row ${ag?'agot':''}">
+      <div class="cr-info"><b>${esc(it.nombre||'')}</b><span>${esc(it.marca||'')}${(it.stock!=null&&!ag)?` · stock ${it.stock}`:''}</span></div>
+      <div class="cr-precio">${ag?'<span class="agot-tag">AGOTADO</span>':fmt(precio)}</div>
+      ${ag?'<div></div>':`<div class="stepper sm"><button data-cm="${i}">−</button><span>${q}</span><button data-cp="${i}">+</button></div>`}
+      <div class="cr-sub">${(q>0&&!ag)?fmt(precio*q):''}</div>
+    </div>`;
+  }
+
+  /* -------- Pantalla INICIO (elegir modo) -------- */
+  function screenInicio(){
+    $('#sheet').innerHTML = hd() + `<div class="bd">
+      <div class="marca">Consolidado 🤝</div>
+      <h2>${esc(c.nombre)}</h2>
+      <div class="genero">${esc(c.marca||'')}${c.descripcion?' · '+esc(c.descripcion):''}</div>
+      ${c.fecha_llegada?`<div><span class="stock-modal low">Llegada del contenedor: ${esc(c.fecha_llegada)}</span></div>`:''}
+      <div class="section-t">¿Cómo funciona?</div>
+      <div class="genero" style="line-height:1.6">Dices cuánto quieres <b>invertir</b> y armas tu pedido con los perfumes de la campaña (mínimo <b>${minMod}</b> modelos distintos). Mientras más inviertes —tú solo o junto a un <b>grupo</b>— más barato es cada perfume.</div>
+      <div class="section-t">Precios según inversión</div>
+      ${tablaPrecios()}
+      <div class="section-t">Elige cómo pedir</div>
+      <button class="add-cta" id="goInd">🙋 Pedir yo solo (individual)</button>
+      <button class="add-cta ghost" id="goGrp" style="margin-top:8px">👥 Unirme o crear un grupo</button>
+    </div>`;
+    $('#closeSheet').onclick=closeProduct;
+    $('#goInd').onclick=()=>{ st.modo='individual'; st.grupoSel=null; st.pantalla='pedido'; render(); };
+    $('#goGrp').onclick=()=>{ st.modo='grupo'; st.pantalla='grupos'; cargarGrupos(); };
+  }
+
+  /* -------- Pantalla GRUPOS -------- */
+  async function cargarGrupos(){
+    render(); // muestra "cargando"
+    const { data, error } = await sb.rpc('listar_grupos_consolidado', { p_cid:c.id });
+    st.grupos = error ? [] : (data||[]);
+    render();
+  }
+  function screenGrupos(){
+    const bi = bs.length-1; // mejor bracket (referencia)
+    $('#sheet').innerHTML = hd() + `<div class="bd">
+      <button class="con-back" id="back">← Volver</button>
+      <h2>Grupos de "${esc(c.nombre)}"</h2>
+      <div class="genero" style="line-height:1.6">Únanse varios para llegar juntos a una inversión mayor y pagar el precio más barato. Tú solicitas unirte y <b>el dueño aprueba</b> tu ingreso.</div>
+      <div class="section-t">Grupos abiertos</div>
+      <div id="grpList">${ st.grupos===null ? '<div class="state"><div class="spinner"></div>Cargando...</div>' :
+        (!st.grupos.length ? '<div class="genero">Todavía no hay grupos. ¡Crea el primero abajo!</div>' :
+        st.grupos.map((g,i)=>{ const et=bracketIdxDe(c, Number(g.total)||0); const lab=(et>=0&&bs[et])?bs[et].etiqueta:''; 
+          return `<div class="grp-item"><div class="gi-main"><b>${esc(g.nombre_grupo||'Grupo')}</b><span>Invertido: ${fmt(Number(g.total)||0)} · ${g.miembros} miembro(s)${lab?` · precio ${esc(lab)}`:''}${g.meta?` · meta ${fmt(g.meta)}`:''}</span></div><button data-join="${i}">Unirme</button></div>`;
+        }).join('')) }</div>
+      <div class="section-t">Crear un grupo nuevo</div>
+      <div class="miniform">
+        <input id="gNombre" placeholder="Nombre del grupo *" value="${esc(st.nuevo.nombre)}">
+        <input id="gMeta" type="number" inputmode="numeric" placeholder="Meta de inversión (ej. 200000)" value="${st.nuevo.meta||''}">
+        <input id="gLnombre" placeholder="Tu nombre (líder) *" value="${esc(st.nuevo.lnombre)}">
+        <input id="gLtel" placeholder="Tu teléfono / WhatsApp *" inputmode="tel" value="${esc(st.nuevo.ltel)}">
       </div>
-      <div class="bd">
-        <div class="marca">Consolidado 🤝</div>
-        <h2>${esc(c.nombre)}</h2>
-        <div class="genero">${esc(c.marca||'')}${c.descripcion?' · '+esc(c.descripcion):''}</div>
-        ${c.fecha_cierre?`<div><span class="stock-modal low">Cierra: ${esc(c.fecha_cierre)}</span></div>`:''}
+      <button class="add-cta" id="crearGrupo">Crear grupo y armar mi pedido</button>
+    </div>`;
+    $('#closeSheet') && ($('#closeSheet').onclick=closeProduct);
+    $('#back').onclick=()=>{ st.pantalla='inicio'; st.modo=null; render(); };
+    document.querySelectorAll('#grpList [data-join]').forEach(b=>b.onclick=()=>{ st.grupoSel=st.grupos[+b.dataset.join]; st.pantalla='pedido'; render(); });
+    const nb={gNombre:'nombre',gMeta:'meta',gLnombre:'lnombre',gLtel:'ltel'};
+    Object.keys(nb).forEach(idc=>{ const el=document.getElementById(idc); if(el) el.oninput=()=>st.nuevo[nb[idc]]=el.value; });
+    $('#crearGrupo').onclick=crearGrupo;
+  }
+  async function crearGrupo(){
+    const nombre=(st.nuevo.nombre||'').trim(), ln=(st.nuevo.lnombre||'').trim(), lt=(st.nuevo.ltel||'').trim();
+    if(!nombre||!ln||!lt){ toast('Completa nombre del grupo, tu nombre y teléfono'); return; }
+    const btn=$('#crearGrupo'); btn.disabled=true; btn.textContent='Creando...';
+    const { data, error } = await sb.rpc('crear_grupo_consolidado', { p_cid:c.id, p_nombre_grupo:nombre, p_lider_nombre:ln, p_lider_tel:lt, p_meta: st.nuevo.meta?Number(st.nuevo.meta):null });
+    if(error){ btn.disabled=false; btn.textContent='Crear grupo y armar mi pedido'; toast('No se pudo crear el grupo'); return; }
+    guardarCodigo(data.codigo);
+    st.grupoSel={ id:data.grupo_id, codigo:data.codigo, nombre_grupo:nombre, total:0, miembros:0, meta:st.nuevo.meta||0 };
+    st.nombrePref=ln; st.telPref=lt;
+    st.pantalla='pedido'; render();
+    toast('Grupo creado ✓ Código '+data.codigo);
+  }
 
-        <div class="section-t">¿Cómo funciona?</div>
-        <div class="genero" style="line-height:1.6">Varias personas se unen a un mismo pedido. Mientras más unidades se junten, <b>más barato</b> sale para todos. Únete con tus datos y confirmamos tu cupo.</div>
+  /* -------- Pantalla PEDIDO (individual o miembro de grupo) -------- */
+  function screenPedido(){
+    const r=resumen(); const et=etiquetaActual(); const esGrupo=st.modo==='grupo';
+    const proyect = esGrupo ? (montoBaseGrupo()+(Number(st.inversion)||0)) : (Number(st.inversion)||0);
+    $('#sheet').innerHTML = hd() + `<div class="bd">
+      <button class="con-back" id="back">← Volver</button>
+      <div class="marca">Consolidado 🤝 ${esGrupo?'· Grupo':'· Individual'}</div>
+      <h2>${esc(c.nombre)}</h2>
+      ${esGrupo && st.grupoSel ? `<div class="genero">Grupo: <b>${esc(st.grupoSel.nombre_grupo||'')}</b>${st.grupoSel.codigo?` (${esc(st.grupoSel.codigo)})`:''} · ya invertido ${fmt(montoBaseGrupo())}</div>`:''}
 
-        <div class="section-t">Precios por cantidad total</div>
-        <div class="escala">${es.map(e=>{ const active=proj>=e.min && (precioEnEscala(c,proj)===e.precio); return `<div class="er ${active?'active':''}"><span class="q">Desde ${e.min} u.${active?'<span class="now">Ahora</span>':''}</span><span class="pp">${fmt(e.precio)} c/u</span></div>`; }).join('')}</div>
+      <div class="section-t">1) ¿Cuánto vas a invertir?</div>
+      <div class="miniform"><input id="inv" type="number" inputmode="numeric" placeholder="Monto en ${esc(CONFIG.MONEDA||'S/')}" value="${st.inversion}"></div>
+      <div class="genero" id="brInfo">${ bs.length ? (et?`Con esa inversión${esGrupo?' del grupo':''} tus precios son la columna <b>${esc(et)}</b>${esGrupo?` (proyectado: ${fmt(proyect)})`:''}.`:'Ingresa un monto para ver tus precios.') : 'Esta campaña no tiene precios configurados.' }</div>
 
-        <div class="prog">
-          <div class="lbl"><span>${proj} unidades ${meta>0?`de ${meta}`:''}</span><span>${pct}%</span></div>
-          <div class="bar"><i style="width:${pct}%"></i></div>
-          ${nx?`<div class="next">Con ${nx.faltan} unidad${nx.faltan>1?'es':''} más el precio baja a ${fmt(nx.precio)} c/u</div>`:`<div class="next">¡Mejor precio alcanzado! 🎉</div>`}
-        </div>
+      <div class="section-t">2) Elige tus perfumes <span style="color:var(--muted);font-weight:400">(mín. ${minMod} modelos)</span></div>
+      <div id="perfList">${its.map((_,i)=>filaPerfume(i)).join('')}</div>
 
-        <div class="section-t">¿Cuántas unidades pides?</div>
-        <div class="qty-pick"><div class="stepper"><button id="cMinus">−</button><span id="cVal">${qty}</span><button id="cPlus">+</button></div><span style="color:var(--muted);font-size:.85rem">${fmt(precio)} c/u</span></div>
+      <div class="con-sum">
+        <div class="cell"><small>Tu total</small><b id="sumTotal">${fmt(r.t)}</b></div>
+        <div class="cell"><small>Inversión declarada</small><b>${fmt(Number(st.inversion)||0)}</b></div>
+        <div class="cell"><small>Modelos elegidos</small><b id="sumMods" style="color:${r.mods>=minMod?'var(--gold-1)':'#e6a24b'}">${r.mods} / ${minMod}</b></div>
+        <div class="cell"><small>Diferencia vs. inversión</small><b>${fmt(r.t-(Number(st.inversion)||0))}</b></div>
+      </div>
 
-        <div class="section-t">Comprobante de pago (opcional)</div>
-        <div class="pay-up">
-          <label>Si ya hiciste un adelanto, sube la foto aquí</label>
-          <input id="conFiles" type="file" accept="image/*" multiple>
-          <div class="pay-thumbs" id="conThumbs"></div>
-        </div>
+      <div class="section-t">Comprobante de pago (opcional)</div>
+      <div class="pay-up">
+        <label>Si ya diste un adelanto, sube la foto aquí</label>
+        <input id="conFiles" type="file" accept="image/*" multiple>
+        <div class="pay-thumbs" id="conThumbs"></div>
+      </div>
 
-        <div class="section-t">Tus datos</div>
-        <div class="miniform">
-          <input id="conNombre" placeholder="Nombre completo *" value="${esc(cliente.nombre||'')}">
-          <input id="conTel" placeholder="Teléfono / WhatsApp *" inputmode="tel" value="${esc(cliente.tel||'')}">
-          <input id="conDir" placeholder="Dirección o referencia (opcional)" value="${esc(cliente.dir||'')}">
-          <textarea id="conNota" rows="2" placeholder="Nota (opcional)"></textarea>
-        </div>
+      <div class="section-t">Tus datos</div>
+      <div class="miniform">
+        <input id="conNombre" placeholder="Nombre completo *" value="${esc(st.nombrePref||cliente.nombre||'')}">
+        <input id="conTel" placeholder="Teléfono / WhatsApp *" inputmode="tel" value="${esc(st.telPref||cliente.tel||'')}">
+        <input id="conDir" placeholder="Dirección o referencia (opcional)" value="${esc(cliente.dir||'')}">
+        <textarea id="conNota" rows="2" placeholder="Nota (opcional)"></textarea>
+      </div>
 
-        <div class="combo-total"><span class="k">Tu total (${qty} u.)</span><span class="v">${fmt(precio*qty)}</span></div>
-        <button class="add-cta" id="conSend">Unirme al consolidado · ${fmt(precio*qty)}</button>
-      </div>`;
+      <button class="add-cta" id="conSend">${esGrupo?'Solicitar unirme al grupo':'Enviar mi pedido'} · ${fmt(r.t)}</button>
+      ${esGrupo?'<div class="genero" style="margin-top:8px;font-size:.82rem">El dueño revisará tu solicitud. El precio final se ajusta según lo que junte el grupo.</div>':''}
+    </div>`;
 
-    $('#closeSheet').onclick = closeProduct;
-    const refresh=()=>draw();
-    $('#cMinus').onclick=()=>{ qty=Math.max(1,qty-1); refresh(); };
-    $('#cPlus').onclick =()=>{ qty=qty+1; refresh(); };
-    function drawThumbs(){ $('#conThumbs').innerHTML=files.map((u,i)=>`<div class="pt"><img src="${esc(u.url)}"><button data-rm="${i}">×</button></div>`).join('');
-      $('#conThumbs').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ files.splice(+b.dataset.rm,1); drawThumbs(); }); }
+    $('#closeSheet').onclick=closeProduct;
+    $('#back').onclick=()=>{ if(esGrupo){ st.pantalla='grupos'; } else { st.pantalla='inicio'; st.modo=null; } render(); };
+    const inv=$('#inv'); if(inv){ inv.onchange=()=>{ st.inversion=inv.value; render(); }; }
+    document.querySelectorAll('#perfList [data-cp]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.cp; st.cart[i]=(st.cart[i]||0)+1; render(); });
+    document.querySelectorAll('#perfList [data-cm]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.cm; st.cart[i]=Math.max(0,(st.cart[i]||0)-1); render(); });
+    function drawThumbs(){ $('#conThumbs').innerHTML=st.files.map((u,i)=>`<div class="pt"><img src="${esc(u.url)}"><button data-rm="${i}">×</button></div>`).join('');
+      $('#conThumbs').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ st.files.splice(+b.dataset.rm,1); drawThumbs(); }); }
     drawThumbs();
-    $('#conFiles').onchange = async e => { const fs=[...e.target.files]; if(!fs.length)return; toast('Subiendo...'); for(const f of fs){ const u=await subirComprobante(f); if(u) files.push({url:u}); } drawThumbs(); toast('Comprobante listo'); };
+    $('#conFiles').onchange = async e => { const fs=[...e.target.files]; if(!fs.length)return; toast('Subiendo...'); for(const f of fs){ const u=await subirComprobante(f); if(u) st.files.push({url:u}); } drawThumbs(); toast('Comprobante listo'); };
     const cmap={conNombre:'nombre',conTel:'tel',conDir:'dir'}; Object.keys(cmap).forEach(idc=>{ const el=document.getElementById(idc); if(el) el.oninput=()=>cliente[cmap[idc]]=el.value; });
-    $('#conSend').onclick = enviarCon;
+    $('#conSend').onclick=enviarCon;
   }
 
   async function enviarCon(){
     const nombre=($('#conNombre').value||'').trim(), tel=($('#conTel').value||'').trim();
     const dir=($('#conDir').value||'').trim(), nota=($('#conNota').value||'').trim();
+    const inversion=Number(st.inversion)||0;
+    const r=resumen();
+    if(!inversion){ toast('Escribe cuánto vas a invertir'); return; }
+    if(r.mods<minMod){ toast(`Elige al menos ${minMod} modelos distintos`); return; }
     if(!nombre||!tel){ toast('Pon tu nombre y teléfono'); return; }
+    const items=Object.keys(st.cart).filter(k=>st.cart[k]>0).map(k=>({idx:Number(k), qty:st.cart[k]}));
     const btn=$('#conSend'); btn.disabled=true; btn.textContent='Enviando...';
-    const { data, error } = await sb.rpc('crear_consolidado_pedido', {
-      p_cid:c.id, p_qty:qty, p_nombre:nombre, p_tel:tel, p_dir:dir||null, p_nota:nota||null,
-      p_comprobantes:files.map(f=>f.url)
-    });
-    if(error){ btn.disabled=false; btn.textContent='Unirme al consolidado'; toast('No se pudo enviar. Intenta de nuevo'); return; }
-    guardarCodigo(data);
-    okScreen('¡Te uniste al consolidado!', data, 'Tu pedido se sumó al grupo. Cuando confirmemos tu cupo te avisaremos por WhatsApp. Guarda tu código para consultar el estado.');
-    const precio=precioCon(qty);
-    const msg=`Hola ${enc(CONFIG.TIENDA_NOMBRE)}! Me uno al *CONSOLIDADO*:%0A• ${enc(c.nombre)} x${qty} = ${enc(fmt(precio*qty))}%0ACódigo: ${enc(data)}%0A%0A👤 ${enc(nombre)} · ${enc(tel)}`;
+    let cod, error;
+    if(st.modo==='grupo'){
+      const grpId = st.grupoSel && st.grupoSel.id; if(!grpId){ btn.disabled=false; toast('Elige o crea un grupo'); return; }
+      ({ data:cod, error } = await sb.rpc('unirse_grupo_consolidado', { p_grupo_id:grpId, p_inversion:inversion, p_items:items, p_nombre:nombre, p_tel:tel, p_dir:dir||null, p_nota:nota||null, p_comprobantes:st.files.map(f=>f.url) }));
+    } else {
+      ({ data:cod, error } = await sb.rpc('crear_pedido_consolidado_individual', { p_cid:c.id, p_inversion:inversion, p_items:items, p_nombre:nombre, p_tel:tel, p_dir:dir||null, p_nota:nota||null, p_comprobantes:st.files.map(f=>f.url) }));
+    }
+    if(error){ btn.disabled=false; btn.textContent='Enviar mi pedido';
+      const m=String(error.message||''); 
+      toast( m.includes('MIN_MODELOS')?`Elige al menos ${minMod} modelos`: m.includes('AGOTADO')?'Un perfume quedó agotado': m.includes('GRUPO_CERRADO')?'El grupo ya se cerró':'No se pudo enviar. Intenta de nuevo');
+      return;
+    }
+    guardarCodigo(cod);
+    const titulo = st.modo==='grupo' ? '¡Solicitud enviada al grupo!' : '¡Pedido enviado!';
+    const texto = st.modo==='grupo' ? 'El dueño revisará tu solicitud para aprobar tu ingreso al grupo. Guarda tu código para consultar el estado.' : 'Recibimos tu pedido del consolidado. Te contactaremos por WhatsApp. Guarda tu código.';
+    okScreen(titulo, cod, texto);
+    const lineas=items.map(it=>{ const bi=bIdxActual(); return `• ${enc(its[it.idx].nombre||'')} x${it.qty} = ${enc(fmt(precioItem(c,it.idx,bi)*it.qty))}`; }).join('%0A');
+    const extra = st.modo==='grupo' && st.grupoSel ? `%0AGrupo: ${enc(st.grupoSel.nombre_grupo||'')} (${enc(st.grupoSel.codigo||'')})` : '';
+    const msg=`Hola ${enc(CONFIG.TIENDA_NOMBRE)}! *CONSOLIDADO ${st.modo==='grupo'?'GRUPAL':'INDIVIDUAL'}*:%0AInversión: ${enc(fmt(inversion))}%0A${lineas}%0ATotal: ${enc(fmt(r.t))}%0ACódigo: ${enc(cod)}${extra}%0A%0A👤 ${enc(nombre)} · ${enc(tel)}`;
     setTimeout(()=>{ if(confirm('¿Enviar también tu pedido por WhatsApp?')) window.open(`https://wa.me/${CONFIG.WHATSAPP}?text=${msg}`,'_blank'); }, 300);
-    load();
   }
 
-  draw();
+  function render(){
+    if(st.pantalla==='inicio') screenInicio();
+    else if(st.pantalla==='grupos'){ if(!st.grupos) st.grupos=null; screenGrupos(); }
+    else screenPedido();
+  }
+  st.grupos = st.grupos; // (mantener)
+  render();
   $('#overlay').classList.add('open'); document.body.style.overflow='hidden';
 }
 
@@ -855,7 +1030,7 @@ function abrirConsulta(){
     <div class="bd">
       <div class="marca">Consulta</div>
       <h2>Estado de tu pedido</h2>
-      <div class="genero">Escribe tu código (empieza con PRE- o CON-) para ver si ya está confirmado.</div>
+      <div class="genero">Escribe tu código (PRE-, CON- o GRP-) para ver el estado.</div>
       ${ultimos.length?`<div class="section-t">Tus últimos códigos</div><div class="chips" style="display:flex;flex-wrap:wrap;gap:8px">${ultimos.slice(0,6).map(c=>`<button class="np" data-cod="${esc(c)}" style="padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);color:var(--gold-1)">${esc(c)}</button>`).join('')}</div>`:''}
       <div class="miniform"><input id="codInput" placeholder="Ej. PRE-A1B2C3" style="text-transform:uppercase"></div>
       <button class="add-cta" id="codBtn" style="margin-top:14px">Consultar</button>
@@ -869,15 +1044,17 @@ function abrirConsulta(){
     $('#codResult').innerHTML='<div class="state" style="padding:20px"><div class="spinner"></div></div>';
     let r;
     if(cod.startsWith('PRE')) r=await sb.rpc('consultar_preorden',{cod});
-    else if(cod.startsWith('CON')) r=await sb.rpc('consultar_consolidado',{cod});
-    else { $('#codResult').innerHTML='<div class="genero">El código debe empezar con PRE- o CON-.</div>'; return; }
+    else if(cod.startsWith('CON')||cod.startsWith('GRP')) r=await sb.rpc('consultar_consolidado',{cod});
+    else { $('#codResult').innerHTML='<div class="genero">El código debe empezar con PRE-, CON- o GRP-.</div>'; return; }
     const row = r&&r.data&&r.data[0];
     if(!row){ $('#codResult').innerHTML='<div class="genero">No encontramos ese código. Revísalo e intenta de nuevo.</div>'; return; }
-    const est=row.estado||'pendiente';
-    const txt = est==='confirmado'?'¡Tu pedido está CONFIRMADO! ✅ Te contactaremos para la entrega.'
+    const est=row.estado||'pendiente'; const esGrupo=(row.tipo==='grupo');
+    const txt = esGrupo ? (est==='abierto'?'Tu grupo está ABIERTO, sumando inversión. Invita a más personas para bajar el precio.':est==='cerrado'?'El grupo está cerrado. Procesamos el pedido conjunto.':'Grupo cancelado.')
+      : est==='aprobado'?'¡Aprobado! ✅ Ya cuentas dentro del grupo/pedido.'
+      : est==='confirmado'?'¡Tu pedido está CONFIRMADO! ✅ Te contactaremos para la entrega.'
       : est==='entregado'?'Pedido entregado. ¡Gracias! 🎉'
-      : est==='rechazado'?'Tu pedido fue rechazado. Escríbenos por WhatsApp para ayudarte.'
-      : 'Tu pedido está en revisión. Apenas confirmemos tu pago, cambiará a CONFIRMADO.';
+      : est==='rechazado'?'Tu solicitud fue rechazada. Escríbenos por WhatsApp para ayudarte.'
+      : 'Tu pedido está en revisión. Apenas lo confirmemos, cambiará de estado.';
     $('#codResult').innerHTML=`<div style="text-align:center"><div class="est-badge ${esc(est)}">${esc(est.toUpperCase())}</div><p style="color:var(--muted);margin-top:10px;line-height:1.6">${txt}</p>${row.total?`<div class="genero" style="justify-content:center;margin-top:6px">Total: ${fmt(row.total)}</div>`:''}</div>`;
   }
   $('#overlay').classList.add('open'); document.body.style.overflow='hidden';

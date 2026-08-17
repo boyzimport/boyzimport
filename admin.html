@@ -125,6 +125,24 @@ img{display:block;max-width:100%}
 .est.confirmado,.est.entregado{color:var(--ok); border-color:rgba(123,216,143,.5); background:rgba(123,216,143,.1)}
 .est.rechazado{color:var(--danger); border-color:var(--danger)}
 .esc-row{display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; margin-bottom:8px}
+.est.aprobado{color:#6cc0ff; border-color:rgba(108,192,255,.5); background:rgba(108,192,255,.12)}
+/* Editor de perfumes del consolidado */
+.con-item-row{border:1px solid var(--line-soft); border-radius:10px; padding:10px; margin-bottom:9px; background:var(--panel-2)}
+.con-item-row .cir-top{display:flex; gap:7px; align-items:center; flex-wrap:wrap; margin-bottom:7px}
+.con-item-row .cir-top input[type=text],.con-item-row .cir-top input:not([type]){min-width:120px}
+.con-item-row .cir-ag{display:flex; align-items:center; gap:4px; font-size:.78rem; color:var(--muted); white-space:nowrap}
+.con-item-row .cir-precios{display:flex; gap:6px; flex-wrap:wrap}
+.con-item-row .pcell{max-width:96px}
+.con-item-row .del{background:var(--danger); color:#fff; border:0; border-radius:8px; width:30px; height:30px; cursor:pointer}
+/* Grupos */
+.grupo-card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:13px 15px; margin-bottom:12px; display:flex; flex-direction:column; gap:8px}
+.grp-miembros{display:flex; flex-direction:column; gap:9px}
+.grp-m{border:1px solid var(--line-soft); border-radius:10px; padding:10px 12px; background:var(--panel-2); display:flex; flex-direction:column; gap:6px}
+.grp-m .thumbs{display:flex; gap:8px; flex-wrap:wrap}
+.grp-m .thumbs a{width:56px; height:56px; border-radius:8px; overflow:hidden; border:1px solid var(--line); display:block}
+.grp-m .thumbs img{width:100%; height:100%; object-fit:cover}
+.grp-m .row{display:flex; gap:7px; align-items:center; flex-wrap:wrap}
+.grp-m .row select{max-width:160px}
 </style>
 </head>
 <body>
@@ -187,9 +205,11 @@ img{display:block;max-width:100%}
   </section>
 
   <section id="tab-consolidado" style="display:none">
-    <div class="bar"><button class="btn" id="newCon">+ Nuevo consolidado</button></div>
+    <div class="bar"><button class="btn" id="newCon">+ Nueva campaña de consolidado</button></div>
     <div class="list" id="listCon"></div>
-    <div class="sech">Pedidos que se unieron al consolidado</div>
+    <div class="sech">Grupos (aprueba a los miembros aquí)</div>
+    <div class="list" id="listGrupos"></div>
+    <div class="sech">Pedidos individuales</div>
     <div class="list" id="listConPedidos"></div>
   </section>
 
@@ -263,7 +283,7 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
 });
 
 /* ============ Carga ============ */
-async function boot(){ await Promise.all([loadNotas(), loadProductos(), loadPromos(), loadCombos(), loadVentas(), loadAjustes(), loadPre(), loadPrePedidos(), loadCon(), loadConPedidos()]); renderVentas(); }
+async function boot(){ await Promise.all([loadNotas(), loadProductos(), loadPromos(), loadCombos(), loadVentas(), loadAjustes(), loadPre(), loadPrePedidos(), loadCon(), loadConPedidos(), loadGrupos()]); renderVentas(); }
 
 async function loadAjustes(){
   const {data}=await sb.from('ajustes').select('*').eq('id','principal').maybeSingle();
@@ -1085,14 +1105,16 @@ function ventaManualForm(){
 /* ============================================================
    NUEVO — PREORDEN (perfumes en preventa + solicitudes)
    ============================================================ */
-let PRE=[], PREPED=[], CON=[], CONPED=[];
+let PRE=[], PREPED=[], CON=[], CONPED=[], GRUPOS=[];
 const PRE_ESTADOS=['pendiente','confirmado','entregado','rechazado'];
-const CON_ESTADOS=['pendiente','confirmado','entregado','rechazado'];
+const CON_ESTADOS=['pendiente','aprobado','confirmado','entregado','rechazado'];
+const GRP_ESTADOS=['abierto','cerrado','cancelado'];
 
 async function loadPre(){ const {data}=await sb.from('preordenes').select('*').order('orden').order('created_at',{ascending:false}); PRE=data||[]; renderPre(); }
 async function loadPrePedidos(){ const {data}=await sb.from('preorden_pedidos').select('*').order('created_at',{ascending:false}); PREPED=data||[]; renderPrePedidos(); }
 async function loadCon(){ const {data}=await sb.from('consolidados').select('*').order('orden').order('created_at',{ascending:false}); CON=data||[]; renderCon(); }
-async function loadConPedidos(){ const {data}=await sb.from('consolidado_pedidos').select('*').order('created_at',{ascending:false}); CONPED=data||[]; renderConPedidos(); }
+async function loadConPedidos(){ const {data}=await sb.from('consolidado_pedidos').select('*').order('created_at',{ascending:false}); CONPED=data||[]; renderConPedidos(); renderGrupos(); }
+async function loadGrupos(){ const {data}=await sb.from('consolidado_grupos').select('*').order('created_at',{ascending:false}); GRUPOS=data||[]; renderGrupos(); }
 
 function renderPre(){
   const box=$('#listPre'); if(!box) return;
@@ -1174,15 +1196,20 @@ function renderPrePedidos(){
 }
 
 /* ============================================================
-   NUEVO — CONSOLIDADO (campañas + pedidos que se unen)
+   NUEVO — CONSOLIDADO por INVERSIÓN (campañas + grupos + pedidos)
    ============================================================ */
+function conBrackets(c){ return (Array.isArray(c.brackets)?c.brackets:[]).map(b=>({umbral:Number(b.umbral)||0,etiqueta:b.etiqueta||''})).sort((a,b)=>a.umbral-b.umbral); }
+function conBracketIdx(c, monto){ const bs=conBrackets(c); if(!bs.length) return -1; let idx=0; bs.forEach((b,i)=>{ if((Number(monto)||0)>=b.umbral) idx=i; }); return idx; }
+function conBracketEtiqueta(c, monto){ const bs=conBrackets(c); const i=conBracketIdx(c,monto); return (i>=0&&bs[i])?(bs[i].etiqueta||fmtV(bs[i].umbral)):''; }
+function grupoTotal(gid){ return CONPED.filter(p=>p.grupo_id===gid && ['aprobado','confirmado','entregado'].includes(p.estado||'')).reduce((s,p)=>s+(Number(p.inversion_declarada)||0),0); }
+
 function renderCon(){
   const box=$('#listCon'); if(!box) return;
-  if(!CON.length){ box.innerHTML='<div class="hint">Sin consolidados. Crea uno con su escala de precios (mientras más unidades junten entre todos, más barato).</div>'; return; }
-  box.innerHTML=CON.map(c=>{ const img=imgsOf(c)[0]; const es=(c.escalas||[]); const acum=Number(c.acumulado)||0;
+  if(!CON.length){ box.innerHTML='<div class="hint">Sin campañas. Crea una: define los brackets de inversión (5K, 15K, 30K, 50K...) y la lista de perfumes con su precio por bracket.</div>'; return; }
+  box.innerHTML=CON.map(c=>{ const img=imgsOf(c)[0]; const bs=conBrackets(c); const its=(c.items||[]);
     return `<div class="item"><div class="th">${img?`<img src="${esc(img)}">`:'🤝'}</div>
       <div class="info"><div class="n">${esc(c.nombre)} ${c.activo===false?'<span class="tg off">Oculto</span>':''}</div>
-      <div class="sub">${esc(c.marca||'')} · ${es.length} escala${es.length!==1?'s':''} · Acumulado: ${acum}${c.meta?`/${c.meta}`:''}${c.fecha_cierre?` · cierra ${esc(c.fecha_cierre)}`:''}</div></div>
+      <div class="sub">${esc(c.marca||'')} · ${its.length} perfume(s) · ${bs.length} bracket(s) · mín ${c.min_modelos||1} modelos${c.fecha_llegada?` · llega ${esc(c.fecha_llegada)}`:''}${c.meta_grupo?` · meta grupo ${fmtV(c.meta_grupo)}`:''}</div></div>
       <div class="acts"><button class="iconbtn" data-e="${c.id}">✏️</button><button class="iconbtn" data-d="${c.id}">🗑️</button></div></div>`;
   }).join('');
   box.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>conForm(b.dataset.e));
@@ -1191,81 +1218,187 @@ function renderCon(){
 
 function conForm(id){
   const c=id?CON.find(x=>x.id===id):{}; let imgs=imgsOf(c).slice();
-  let escalas=(c.escalas&&c.escalas.length)?JSON.parse(JSON.stringify(c.escalas)):[{min:1,precio:''},{min:5,precio:''},{min:10,precio:''}];
+  // Modelo de trabajo: brackets (orden visible) + items con precios alineados por índice a brackets
+  let brackets=(c.brackets&&c.brackets.length)?JSON.parse(JSON.stringify(c.brackets)):[{umbral:5000,etiqueta:'5K'},{umbral:15000,etiqueta:'15K'},{umbral:30000,etiqueta:'30K'},{umbral:50000,etiqueta:'50K'}];
+  brackets=brackets.map(b=>({umbral:b.umbral??'',etiqueta:b.etiqueta||''}));
+  let items=(c.items&&c.items.length)?JSON.parse(JSON.stringify(c.items)):[];
+  // Normalizar longitud de precios de cada item a la cantidad de brackets
+  items.forEach(it=>{ it.precios=Array.isArray(it.precios)?it.precios:[]; while(it.precios.length<brackets.length) it.precios.push(''); it.precios.length=brackets.length; if(it.agotado==null) it.agotado=false; if(it.stock==null) it.stock=''; });
+
   $('#modal').innerHTML=`
-    <h3>${id?'Editar':'Nuevo'} consolidado</h3>
+    <h3>${id?'Editar':'Nueva'} campaña de consolidado</h3>
     <div class="grid2">
-      <div class="field"><label>Marca</label><input id="xMarca" value="${esc(c.marca||'')}"></div>
-      <div class="field"><label>Nombre</label><input id="xNombre" value="${esc(c.nombre||'')}" placeholder="Ej. Consolidado Árabes"></div>
+      <div class="field"><label>Marca / Título corto</label><input id="xMarca" value="${esc(c.marca||'')}" placeholder="Ej. Campaña Navideña"></div>
+      <div class="field"><label>Nombre</label><input id="xNombre" value="${esc(c.nombre||'')}" placeholder="Ej. Oferta contenedor noviembre"></div>
     </div>
     <div class="field"><label>Descripción</label><input id="xDesc" value="${esc(c.descripcion||'')}"></div>
     <div class="field"><label>Imágenes</label><input id="xFiles" type="file" accept="image/*" multiple><div class="imgs" id="xImgs"></div></div>
-    <div class="field"><label>Escala de precios (desde N unidades · precio c/u)</label>
-      <div class="hint">Mientras más unidades TOTALES junten entre todos los clientes, más barato. Ej: desde 1 → S/120, desde 5 → S/100, desde 10 → S/85.</div>
-      <div id="xEscalas"></div>
-      <div class="chips" style="margin-top:8px"><button class="np" id="xAddEsc">+ Agregar escala</button></div>
-    </div>
     <div class="grid3">
-      <div class="field"><label>Meta de unidades (opcional)</label><input id="xMeta" type="number" value="${c.meta??''}"></div>
-      <div class="field"><label>Acumulado actual</label><input id="xAcum" type="number" value="${c.acumulado??0}"><div class="hint">El sistema lo sube al confirmar pedidos. Puedes corregirlo.</div></div>
-      <div class="field"><label>Orden</label><input id="xOrden" type="number" value="${c.orden??0}"></div>
+      <div class="field"><label>Fecha de llegada</label><input id="xFecha" value="${esc(c.fecha_llegada||'')}" placeholder="Ej. 20 de noviembre 2026"></div>
+      <div class="field"><label>Mínimo de modelos</label><input id="xMin" type="number" value="${c.min_modelos??5}"></div>
+      <div class="field"><label>Meta inversión grupo</label><input id="xMetaG" type="number" value="${c.meta_grupo??''}" placeholder="Ej. 200000"></div>
     </div>
-    <div class="field"><label>Fecha de cierre (opcional)</label><input id="xCierre" value="${esc(c.fecha_cierre||'')}" placeholder="Ej. 30 de marzo"></div>
-    <div class="check"><input type="checkbox" id="xAct" ${c.activo!==false?'checked':''}><label for="xAct">Activo (visible en el catálogo)</label></div>
+
+    <div class="field"><label>Brackets de inversión (umbral en ${'S/'} · etiqueta)</label>
+      <div class="hint">Mientras MÁS invierte el cliente (o el grupo), MÁS barato. El sistema ordena de menor a mayor umbral automáticamente. Ej: 5000 → "5K", 200000 → "200K".</div>
+      <div id="xBrackets"></div>
+      <div class="chips" style="margin-top:8px"><button class="np" id="xAddBr">+ Agregar bracket</button></div>
+    </div>
+
+    <div class="field"><label>Perfumes de la campaña</label>
+      <div class="hint">Cada perfume tiene un precio por CADA bracket (en el mismo orden que arriba). Marca "Agotado" para deshabilitarlo. Stock vacío = sin límite.</div>
+      <div id="xItems"></div>
+      <div class="chips" style="margin-top:8px"><button class="np" id="xAddItem">+ Agregar perfume</button></div>
+    </div>
+
+    <div class="grid2">
+      <div class="field"><label>Orden</label><input id="xOrden" type="number" value="${c.orden??0}"></div>
+      <div class="check" style="align-self:end"><input type="checkbox" id="xAct" ${c.activo!==false?'checked':''}><label for="xAct">Activo (visible en el catálogo)</label></div>
+    </div>
     <div class="actions"><button class="btn" id="xSave">${id?'Guardar':'Crear'}</button><button class="btn ghost" id="xCancel">Cancelar</button></div>`;
+
   function drawImgs(){ $('#xImgs').innerHTML=imgs.map((u,i)=>`<div class="im"><img src="${esc(u)}"><button data-rm="${i}">×</button></div>`).join(''); $('#xImgs').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{imgs.splice(+b.dataset.rm,1);drawImgs();}); }
   drawImgs();
   $('#xFiles').onchange=async e=>{ const fs=[...e.target.files]; if(!fs.length)return; toast('Subiendo...'); for(const f of fs){const u=await uploadImg(f,'consolidados'); if(u)imgs.push(u);} drawImgs(); toast('Listo'); };
-  function drawEsc(){ $('#xEscalas').innerHTML=escalas.map((e,i)=>`<div class="esc-row"><input data-emin="${i}" type="number" value="${e.min??''}" placeholder="desde N u."><input data-eprecio="${i}" type="number" step="0.01" value="${e.precio??''}" placeholder="precio c/u"><button class="del" data-edel="${i}">×</button></div>`).join('');
-    $('#xEscalas').querySelectorAll('[data-emin]').forEach(el=>el.oninput=()=>escalas[+el.dataset.emin].min=el.value);
-    $('#xEscalas').querySelectorAll('[data-eprecio]').forEach(el=>el.oninput=()=>escalas[+el.dataset.eprecio].precio=el.value);
-    $('#xEscalas').querySelectorAll('[data-edel]').forEach(el=>el.onclick=()=>{escalas.splice(+el.dataset.edel,1);drawEsc();}); }
-  drawEsc();
-  $('#xAddEsc').onclick=()=>{escalas.push({min:'',precio:''});drawEsc();};
+
+  function drawBrackets(){
+    $('#xBrackets').innerHTML=brackets.map((b,i)=>`<div class="esc-row"><input data-bum="${i}" type="number" value="${b.umbral??''}" placeholder="umbral (ej 5000)"><input data-bet="${i}" value="${esc(b.etiqueta||'')}" placeholder="etiqueta (ej 5K)"><button class="del" data-bdel="${i}">×</button></div>`).join('');
+    $('#xBrackets').querySelectorAll('[data-bum]').forEach(el=>el.oninput=()=>brackets[+el.dataset.bum].umbral=el.value);
+    $('#xBrackets').querySelectorAll('[data-bet]').forEach(el=>el.oninput=()=>brackets[+el.dataset.bet].etiqueta=el.value);
+    $('#xBrackets').querySelectorAll('[data-bdel]').forEach(el=>el.onclick=()=>{ const k=+el.dataset.bdel; brackets.splice(k,1); items.forEach(it=>it.precios.splice(k,1)); drawBrackets(); drawItems(); });
+  }
+  function drawItems(){
+    $('#xItems').innerHTML=items.map((it,i)=>{
+      const precios=brackets.map((b,bi)=>`<input class="pcell" data-ip="${i}_${bi}" type="number" step="0.01" value="${it.precios[bi]??''}" placeholder="${esc(b.etiqueta||('B'+(bi+1)))}" title="Precio en ${esc(b.etiqueta||('bracket '+(bi+1)))}">`).join('');
+      return `<div class="con-item-row">
+        <div class="cir-top">
+          <input data-imarca="${i}" value="${esc(it.marca||'')}" placeholder="Marca">
+          <input data-inombre="${i}" value="${esc(it.nombre||'')}" placeholder="Nombre del perfume">
+          <input data-istock="${i}" type="number" value="${it.stock??''}" placeholder="Stock" style="max-width:90px">
+          <label class="cir-ag"><input type="checkbox" data-iag="${i}" ${it.agotado?'checked':''}> Agotado</label>
+          <button class="del" data-idel="${i}">×</button>
+        </div>
+        <div class="cir-precios">${precios||'<span class="hint">Agrega brackets arriba para poner precios</span>'}</div>
+      </div>`;
+    }).join('') || '<div class="hint">Sin perfumes todavía.</div>';
+    $('#xItems').querySelectorAll('[data-imarca]').forEach(el=>el.oninput=()=>items[+el.dataset.imarca].marca=el.value);
+    $('#xItems').querySelectorAll('[data-inombre]').forEach(el=>el.oninput=()=>items[+el.dataset.inombre].nombre=el.value);
+    $('#xItems').querySelectorAll('[data-istock]').forEach(el=>el.oninput=()=>items[+el.dataset.istock].stock=el.value);
+    $('#xItems').querySelectorAll('[data-iag]').forEach(el=>el.onchange=()=>items[+el.dataset.iag].agotado=el.checked);
+    $('#xItems').querySelectorAll('[data-ip]').forEach(el=>el.oninput=()=>{ const [i,bi]=el.dataset.ip.split('_').map(Number); items[i].precios[bi]=el.value; });
+    $('#xItems').querySelectorAll('[data-idel]').forEach(el=>el.onclick=()=>{ items.splice(+el.dataset.idel,1); drawItems(); });
+  }
+  drawBrackets(); drawItems();
+  $('#xAddBr').onclick=()=>{ brackets.push({umbral:'',etiqueta:''}); items.forEach(it=>it.precios.push('')); drawBrackets(); drawItems(); };
+  $('#xAddItem').onclick=()=>{ items.push({marca:'',nombre:'',stock:'',agotado:false,precios:brackets.map(()=>'')}); drawItems(); };
   $('#xCancel').onclick=closeOv;
+
   $('#xSave').onclick=async()=>{
     const nombre=$('#xNombre').value.trim(); if(!nombre){toast('Ponle nombre',true);return;}
-    const escLimpio=escalas.filter(e=>Number(e.precio)>0).map(e=>({min:Number(e.min)||1,precio:Number(e.precio)})).sort((a,b)=>a.min-b.min);
-    if(!escLimpio.length){toast('Agrega al menos una escala con precio',true);return;}
-    const payload={marca:$('#xMarca').value.trim()||null,nombre,descripcion:$('#xDesc').value.trim()||null,imagenes:imgs,imagen_url:imgs[0]||null,escalas:escLimpio,meta:$('#xMeta').value?parseInt($('#xMeta').value):null,acumulado:parseInt($('#xAcum').value)||0,fecha_cierre:$('#xCierre').value.trim()||null,orden:parseInt($('#xOrden').value)||0,activo:$('#xAct').checked};
+    // Orden de brackets por umbral ascendente y alinear precios de cada item
+    const order=brackets.map((b,i)=>({i,umbral:Number(b.umbral)||0})).sort((a,b)=>a.umbral-b.umbral).map(o=>o.i);
+    const brOut=order.map(i=>({umbral:Number(brackets[i].umbral)||0, etiqueta:(brackets[i].etiqueta||'').trim()||String(Number(brackets[i].umbral)||0)}));
+    if(!brOut.length){toast('Agrega al menos un bracket de inversión',true);return;}
+    const itemsOut=items.filter(it=>(it.nombre||'').trim()).map(it=>({
+      marca:(it.marca||'').trim()||null,
+      nombre:(it.nombre||'').trim(),
+      stock:(it.stock===''||it.stock==null)?null:Number(it.stock),
+      agotado:!!it.agotado,
+      precios:order.map(i=>Number(it.precios[i])||0)
+    }));
+    if(!itemsOut.length){toast('Agrega al menos un perfume',true);return;}
+    const payload={
+      marca:$('#xMarca').value.trim()||null, nombre,
+      descripcion:$('#xDesc').value.trim()||null,
+      imagenes:imgs, imagen_url:imgs[0]||null,
+      fecha_llegada:$('#xFecha').value.trim()||null,
+      min_modelos:parseInt($('#xMin').value)||0,
+      meta_grupo:$('#xMetaG').value?Number($('#xMetaG').value):null,
+      brackets:brOut, items:itemsOut,
+      orden:parseInt($('#xOrden').value)||0, activo:$('#xAct').checked
+    };
     const {error}= id?await sb.from('consolidados').update(payload).eq('id',id):await sb.from('consolidados').insert(payload);
     if(error){toast('Error: '+error.message,true);return;}
     toast('Guardado ✓'); closeOv(); loadCon();
   };
   openOv();
 }
-async function delCon(id){ if(!confirm('¿Eliminar este consolidado? (No borra los pedidos ya hechos)'))return; const {error}=await sb.from('consolidados').delete().eq('id',id); if(error){toast('Error: '+error.message,true);return;} toast('Eliminado'); loadCon(); }
+async function delCon(id){ if(!confirm('¿Eliminar esta campaña? (No borra los pedidos/grupos ya hechos)'))return; const {error}=await sb.from('consolidados').delete().eq('id',id); if(error){toast('Error: '+error.message,true);return;} toast('Eliminado'); loadCon(); }
 
-async function ajustarAcumulado(cid, delta){
-  if(!cid) return;
-  const {data}=await sb.from('consolidados').select('acumulado').eq('id',cid).maybeSingle();
-  if(!data) return; let n=Number(data.acumulado||0)+delta; if(n<0)n=0;
-  await sb.from('consolidados').update({acumulado:n}).eq('id',cid);
-}
+/* ---- Estado de pedidos (individuales y miembros de grupo) ---- */
 async function cambiarEstadoCon(id, nuevo){
-  const v=CONPED.find(x=>x.id===id); if(!v) return;
-  const contaba=v.contado!==false, debeContar=nuevo!=='rechazado'; let nc=contaba;
-  try{ if(contaba&&!debeContar){ await ajustarAcumulado(v.consolidado_id, -(Number(v.qty)||0)); nc=false; } else if(!contaba&&debeContar){ await ajustarAcumulado(v.consolidado_id, +(Number(v.qty)||0)); nc=true; } }catch(e){ console.warn(e); }
-  const {error}=await sb.from('consolidado_pedidos').update({estado:nuevo, contado:nc}).eq('id',id);
+  const {error}=await sb.from('consolidado_pedidos').update({estado:nuevo}).eq('id',id);
   if(error){ toast('Error: '+error.message,true); return; }
-  toast('Actualizado ✓'); await loadCon(); loadConPedidos();
+  toast('Actualizado ✓'); loadConPedidos();
 }
-async function delConPedido(id){ const v=CONPED.find(x=>x.id===id); if(!v)return; if(!confirm('¿Eliminar este pedido del consolidado?'))return; if(v.contado!==false){ try{ await ajustarAcumulado(v.consolidado_id, -(Number(v.qty)||0)); }catch(e){} } const {error}=await sb.from('consolidado_pedidos').delete().eq('id',id); if(error){toast('Error: '+error.message,true);return;} toast('Eliminado'); await loadCon(); loadConPedidos(); }
+async function delConPedido(id){ if(!confirm('¿Eliminar este pedido de consolidado?'))return; const {error}=await sb.from('consolidado_pedidos').delete().eq('id',id); if(error){toast('Error: '+error.message,true);return;} toast('Eliminado'); loadConPedidos(); }
 
+function itemsResumen(v){ const its=Array.isArray(v.items)?v.items:[]; return its.map(x=>`${esc(x.nombre||'')} x${esc(String(x.qty||0))} = ${fmtV(x.subtotal!=null?x.subtotal:(Number(x.precio_unit)||0)*(Number(x.qty)||0))}`).join('<br>'); }
+
+/* ---- Pedidos INDIVIDUALES ---- */
 function renderConPedidos(){
   const box=$('#listConPedidos'); if(!box) return;
-  if(!CONPED.length){ box.innerHTML='<div class="hint">Aún nadie se ha unido a un consolidado. Cuando alguien se una, aparecerá aquí.</div>'; return; }
-  box.innerHTML=CONPED.map(v=>{ const comp=Array.isArray(v.comprobantes)?v.comprobantes:[]; const est=v.estado||'pendiente';
+  const list=CONPED.filter(v=>(v.modo||'individual')==='individual');
+  if(!list.length){ box.innerHTML='<div class="hint">Aún no hay pedidos individuales de consolidado.</div>'; return; }
+  box.innerHTML=list.map(v=>{ const comp=Array.isArray(v.comprobantes)?v.comprobantes:[]; const est=v.estado||'pendiente';
     return `<div class="pedido">
       <div class="ph"><span class="cod">${esc(v.codigo||'—')}</span><span class="est ${est}">${esc(est)}</span></div>
       <div class="meta">${esc(fechaCorta(v.created_at))}<br><b>${esc(v.cliente_nombre||'Sin nombre')}</b>${v.cliente_telefono?` · ${esc(v.cliente_telefono)}`:''}${v.cliente_direccion?`<br>${esc(v.cliente_direccion)}`:''}${v.cliente_nota?`<br>Nota: ${esc(v.cliente_nota)}`:''}</div>
-      <div class="arts"><b>${esc(v.consolidado_nombre||'')}</b> — ${esc(String(v.qty))} u.${v.precio_unit?` × ${fmtV(v.precio_unit)}`:''}${v.total?` = ${fmtV(v.total)}`:''}</div>
-      ${comp.length?`<div><div class="meta">Comprobante(s) (toca para ampliar):</div><div class="thumbs">${comp.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}"></a>`).join('')}</div></div>`:''}
+      <div class="arts"><b>${esc(v.consolidado_nombre||'')}</b> · Inversión ${fmtV(v.inversion_declarada||0)}${v.bracket_etiqueta?` · precio ${esc(v.bracket_etiqueta)}`:''} · ${v.modelos||0} modelos<br>${itemsResumen(v)}<br><b>Total: ${fmtV(v.total)}</b></div>
+      ${comp.length?`<div><div class="meta">Comprobante(s):</div><div class="thumbs">${comp.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}"></a>`).join('')}</div></div>`:''}
       <div class="row"><select data-cest="${v.id}">${CON_ESTADOS.map(e=>`<option ${est===e?'selected':''}>${e}</option>`).join('')}</select><button class="btn" data-csave="${v.id}">Guardar estado</button><button class="btn danger" data-cdelp="${v.id}">Eliminar</button></div>
     </div>`;
   }).join('');
   box.querySelectorAll('[data-csave]').forEach(b=>b.onclick=()=>{ const id=b.dataset.csave; const sel=box.querySelector('[data-cest="'+id+'"]'); cambiarEstadoCon(id, sel.value); });
   box.querySelectorAll('[data-cdelp]').forEach(b=>b.onclick=()=>delConPedido(b.dataset.cdelp));
+}
+
+/* ---- GRUPOS ---- */
+async function cambiarEstadoGrupo(id, nuevo){ const {error}=await sb.from('consolidado_grupos').update({estado:nuevo}).eq('id',id); if(error){toast('Error: '+error.message,true);return;} toast('Grupo actualizado ✓'); loadGrupos(); }
+async function delGrupo(id){ if(!confirm('¿Eliminar este grupo? Los pedidos de sus miembros quedarán sin grupo.'))return; const {error}=await sb.from('consolidado_grupos').delete().eq('id',id); if(error){toast('Error: '+error.message,true);return;} toast('Grupo eliminado'); loadGrupos(); loadConPedidos(); }
+
+function renderGrupos(){
+  const box=$('#listGrupos'); if(!box) return;
+  if(!GRUPOS.length){ box.innerHTML='<div class="hint">Aún no hay grupos. Cuando un cliente cree un grupo desde el catálogo, aparecerá aquí para aprobar a sus miembros.</div>'; return; }
+  box.innerHTML=GRUPOS.map(g=>{
+    const camp=CON.find(x=>x.id===g.consolidado_id)||{};
+    const miembros=CONPED.filter(p=>p.grupo_id===g.id);
+    const tot=grupoTotal(g.id);
+    const et=conBracketEtiqueta(camp, tot);
+    const est=g.estado||'abierto';
+    const filas=miembros.map(m=>{ const mest=m.estado||'pendiente'; const comp=Array.isArray(m.comprobantes)?m.comprobantes:[];
+      return `<div class="grp-m">
+        <div class="ph"><span class="cod">${esc(m.codigo||'—')}</span><span class="est ${mest}">${esc(mest)}</span></div>
+        <div class="meta"><b>${esc(m.cliente_nombre||'Sin nombre')}</b>${m.cliente_telefono?` · ${esc(m.cliente_telefono)}`:''} · Inversión ${fmtV(m.inversion_declarada||0)} · ${m.modelos||0} modelos</div>
+        <div class="arts">${itemsResumen(m)}<br><b>Subtotal: ${fmtV(m.total)}</b></div>
+        ${comp.length?`<div class="thumbs">${comp.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}"></a>`).join('')}</div>`:''}
+        <div class="row">
+          ${mest!=='aprobado'?`<button class="btn" data-mok="${m.id}">✓ Aprobar</button>`:''}
+          ${mest!=='rechazado'?`<button class="btn danger" data-mno="${m.id}">✗ Rechazar</button>`:''}
+          <select data-mest="${m.id}">${CON_ESTADOS.map(e=>`<option ${mest===e?'selected':''}>${e}</option>`).join('')}</select>
+          <button class="btn" data-msave="${m.id}">Guardar</button>
+          <button class="btn danger" data-mdel="${m.id}">Eliminar</button>
+        </div>
+      </div>`;
+    }).join('') || '<div class="hint">Sin miembros todavía.</div>';
+    return `<div class="grupo-card">
+      <div class="ph"><span class="cod">${esc(g.codigo||'—')}</span><span class="est ${est==='abierto'?'aprobado':(est==='cancelado'?'rechazado':'confirmado')}">${esc(est)}</span></div>
+      <div class="meta"><b>${esc(g.nombre_grupo||'Grupo')}</b> — ${esc(camp.nombre||'')}<br>Líder: ${esc(g.lider_nombre||'—')}${g.lider_telefono?` · ${esc(g.lider_telefono)}`:''}</div>
+      <div class="arts"><b>Inversión aprobada: ${fmtV(tot)}</b>${g.meta?` de meta ${fmtV(g.meta)}`:''}${et?` · precio actual del grupo: <b>${esc(et)}</b>`:''} · ${miembros.filter(m=>['aprobado','confirmado','entregado'].includes(m.estado)).length}/${miembros.length} miembros aprobados</div>
+      <div class="grp-miembros">${filas}</div>
+      <div class="row" style="margin-top:8px">
+        <select data-gest="${g.id}">${GRP_ESTADOS.map(e=>`<option ${est===e?'selected':''}>${e}</option>`).join('')}</select>
+        <button class="btn" data-gsave="${g.id}">Guardar estado del grupo</button>
+        <button class="btn danger" data-gdel="${g.id}">Eliminar grupo</button>
+      </div>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('[data-mok]').forEach(b=>b.onclick=()=>cambiarEstadoCon(b.dataset.mok,'aprobado'));
+  box.querySelectorAll('[data-mno]').forEach(b=>b.onclick=()=>cambiarEstadoCon(b.dataset.mno,'rechazado'));
+  box.querySelectorAll('[data-msave]').forEach(b=>b.onclick=()=>{ const id=b.dataset.msave; const sel=box.querySelector('[data-mest="'+id+'"]'); cambiarEstadoCon(id, sel.value); });
+  box.querySelectorAll('[data-mdel]').forEach(b=>b.onclick=()=>delConPedido(b.dataset.mdel));
+  box.querySelectorAll('[data-gsave]').forEach(b=>b.onclick=()=>{ const id=b.dataset.gsave; const sel=box.querySelector('[data-gest="'+id+'"]'); cambiarEstadoGrupo(id, sel.value); });
+  box.querySelectorAll('[data-gdel]').forEach(b=>b.onclick=()=>delGrupo(b.dataset.gdel));
 }
 
 /* ============ Overlay + acciones ============ */
