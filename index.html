@@ -1,792 +1,1336 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Catálogo</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catálogo — Decants de Perfumes</title>
+<meta name="theme-color" content="#0a0a0d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mi Catálogo">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root{
-    --bg:#071827; --bg2:#0B2236; --surface:#0E2A41; --surface2:#143A58;
-    --ink:#EAF3FA; --muted:#8FB0C9; --gold:#2F92CF; --gold2:#49A8DE; --gold-deep:#1C6FA6;
-    --on-gold:#04121F;
-    --line:#1C3E5C; --line2:rgba(73,168,222,.28); --ok:#2AAE79; --err:#E5675F;
-    --shadow:0 1px 2px rgba(2,10,20,.5),0 20px 46px rgba(2,12,24,.62);
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
-  img{display:block;max-width:100%}
-  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
-  a{color:inherit;text-decoration:none}
-  .serif{font-family:'Cormorant Garamond',serif}
+:root{
+  --bg:#0a0a0d; --bg-2:#101015; --panel:#14141b; --panel-2:#1b1b23;
+  --line:#2a2a33; --line-soft:#1f1f27;
+  --gold-1:#f4e6b8; --gold-2:#d9b45a; --gold-3:#b8893a; --gold-deep:#8a6522;
+  --gold-grad:linear-gradient(135deg,#f4e6b8 0%,#e6c76b 30%,#c99a3e 60%,#f4e6b8 100%);
+  --cream:#f2ecdf; --muted:#8f8a7a; --muted-2:#6a6659;
+  --ok:#7bd88f; --danger:#e0796b; --wa:#25D366; --yape:#7c3aed;
+  --radius:14px; --radius-lg:20px; --shadow:0 20px 60px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:radial-gradient(1200px 620px at 50% -12%, var(--panel) 0%, transparent 62%), var(--bg);
+  color:var(--cream); font-family:'Jost',system-ui,sans-serif; min-height:100vh; -webkit-font-smoothing:antialiased;}
+img{display:block; max-width:100%}
+button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit}
+input{font-family:inherit}
+::selection{background:var(--gold-3); color:#0a0a0d}
+.gold-text{background:var(--gold-grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent;}
 
-  header{position:sticky;top:0;z-index:40;background:rgba(12,11,9,.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-  .bar{max-width:1160px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:16px}
-  .logo-wrap{display:flex;align-items:center;gap:11px;white-space:nowrap}
-  .logo-wrap img{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--line2);object-fit:cover}
-  .brand{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--gold);letter-spacing:.5px;line-height:1}
-  .search{flex:1;position:relative;max-width:420px;margin-left:auto}
-  .search input{width:100%;padding:11px 14px 11px 40px;border:1px solid var(--line);border-radius:100px;background:var(--surface);font-size:14px;color:var(--ink);outline:none;transition:border-color .2s}
-  .search input::placeholder{color:var(--muted)}
-  .search input:focus{border-color:var(--gold)}
-  .search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted)}
-  .cart-btn{position:relative;display:flex;align-items:center;gap:7px;padding:11px 16px;background:var(--gold);color:var(--on-gold);border-radius:100px;font-size:13.5px;font-weight:600;white-space:nowrap}
-  .cart-btn:hover{background:var(--gold2)}
-  @keyframes cartpulse{0%{transform:scale(1)}30%{transform:scale(1.18)}60%{transform:scale(.95)}100%{transform:scale(1)}}
-  .cart-btn.pulse{animation:cartpulse .5s ease}
-  .install-btn{padding:11px 14px;border:1px solid var(--gold);color:var(--gold);border-radius:100px;font-size:12.5px;font-weight:600;white-space:nowrap;background:transparent}
-  .install-btn:hover{background:var(--gold);color:var(--on-gold)}
-  .cart-btn .count{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;background:var(--on-gold);color:var(--gold);border-radius:100px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
+/* Pantalla de carga */
+#loader{position:fixed; inset:0; z-index:9999; background:var(--bg); display:flex; align-items:center; justify-content:center; transition:opacity .7s ease, visibility .7s}
+#loader.hide{opacity:0; visibility:hidden}
+#loader img{width:250px; max-width:70vw; animation:pulse 2s ease-in-out infinite}
+#loader .word{font-family:'Cinzel',serif; font-size:1.8rem; letter-spacing:.14em; color:var(--gold-1); animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.55; transform:scale(.98)} 50%{opacity:1; transform:scale(1)}}
 
-  .hero{max-width:1160px;margin:0 auto;padding:44px 20px 14px;text-align:center;position:relative}
-  .hero::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:420px;height:240px;max-width:90%;background:radial-gradient(ellipse,rgba(73,168,222,.16),transparent 70%);pointer-events:none}
-  .hero-logo{width:118px;height:118px;border-radius:50%;border:2px solid var(--line2);object-fit:cover;margin:0 auto 18px;position:relative;box-shadow:0 0 0 6px rgba(73,168,222,.10)}
-  .hero h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:clamp(32px,6vw,52px);color:var(--gold);line-height:1.02;letter-spacing:1px;position:relative}
-  .hero p{color:var(--muted);margin-top:8px;font-size:15px;position:relative}
-  .socials{display:flex;gap:10px;justify-content:center;margin-top:18px;position:relative}
-  .socials a{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--gold);transition:.18s}
-  .socials a:hover{background:var(--gold);color:var(--on-gold);border-color:var(--gold);transform:translateY(-2px)}
+/* Stock en tarjeta */
+.stk{font-size:.74rem; margin-top:2px}
+.stk.out{color:var(--danger)} .stk.low{color:var(--gold-2)} .stk.ok{color:var(--muted)}
+.card.agotado{opacity:.6} .card.agotado .imgwrap img{filter:grayscale(.6)}
+.stock-modal{display:inline-block; margin-top:8px; font-size:.82rem; padding:5px 11px; border-radius:999px; border:1px solid var(--line)}
+.stock-modal.out{color:var(--danger); border-color:var(--danger)}
+.stock-modal.low{color:var(--gold-1); border-color:var(--gold-deep); background:rgba(184,137,58,.1)}
+.stock-modal.ok{color:var(--muted)}
 
-  .filters{max-width:1160px;margin:0 auto;padding:16px 20px 4px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-  .chip{padding:8px 15px;border:1px solid var(--line);background:var(--surface);border-radius:100px;font-size:13px;font-weight:500;color:var(--ink);transition:all .15s}
-  .chip:hover{border-color:var(--gold)}
-  .chip.on{background:var(--gold);color:var(--on-gold);border-color:var(--gold);font-weight:600}
-  .filters .sep{width:1px;height:22px;background:var(--line);margin:0 4px}
-  .sort{margin-left:auto}
-  .sort select{padding:8px 12px;border:1px solid var(--line);border-radius:100px;background:var(--surface);font-size:13px;font-family:inherit;color:var(--ink);outline:none;cursor:pointer}
-  .count-line{max-width:1160px;margin:0 auto;padding:14px 20px 0;font-size:13px;color:var(--muted)}
+/* Datos del cliente en el carrito */
+.cliente-box{background:var(--panel-2); border:1px solid var(--line-soft); border-radius:12px; padding:12px; margin-bottom:12px; display:flex; flex-direction:column; gap:8px}
+.cliente-box .cliente-t{font-size:.82rem; color:var(--gold-2)} .cliente-box .cliente-t span{color:var(--muted-2); font-size:.72rem}
+.cliente-box input{width:100%; background:var(--panel); border:1px solid var(--line); border-radius:8px; color:var(--cream); padding:9px 11px; font-size:.86rem; outline:none; font-family:inherit}
+.cliente-box input:focus{border-color:var(--gold-3)}
 
-  .grid{max-width:1160px;margin:0 auto;padding:16px 20px 60px;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px}
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s,border-color .2s;cursor:pointer}
-  .card:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:var(--line2)}
-  .thumb{aspect-ratio:1/1;background:var(--surface2);position:relative;overflow:hidden}
-  .thumb img{width:100%;height:100%;object-fit:cover}
-  .thumb .noimg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--gold);opacity:.35}
-  .badge{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.62);color:var(--ink);font-size:11px;font-weight:600;padding:4px 10px;border-radius:100px;letter-spacing:.02em;border:1px solid var(--line2)}
-  .fav{position:absolute;top:10px;right:10px;background:var(--gold);color:var(--on-gold);font-size:10px;font-weight:700;padding:4px 9px;border-radius:100px;text-transform:uppercase;letter-spacing:.05em}
-  .card-body{padding:14px 15px 16px;display:flex;flex-direction:column;flex:1}
-  .eyebrow{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
-  .card h3{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:21px;line-height:1.1;margin:2px 0 6px;color:var(--ink)}
-  .desc{font-size:12.5px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:34px}
-  .meta{display:flex;gap:6px;margin:10px 0 12px;flex-wrap:wrap}
-  .tag{font-size:11px;color:var(--muted);background:var(--surface2);padding:3px 9px;border-radius:100px;border:1px solid var(--line)}
-  .row{margin-top:auto;display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
-  .from-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block}
-  .price{font-family:'Cormorant Garamond',serif;font-size:25px;font-weight:600;color:var(--gold);line-height:1}
-  .promo-flag{position:absolute;top:10px;right:10px;background:var(--gold);color:#fff;font-size:10px;font-weight:700;padding:4px 9px;border-radius:100px;text-transform:uppercase;letter-spacing:.04em}
-  .price-old{font-size:13px;color:var(--muted);text-decoration:line-through;margin-right:6px;font-family:'Inter';font-weight:400}
-  .size .old{text-decoration:line-through;opacity:.55;font-size:11px;margin-right:4px}
-  .m-price .price-old{font-size:15px}
-  .ci-info .p .old{text-decoration:line-through;color:var(--muted);font-size:11px;margin-right:5px}
-  .ci-promo{font-size:9.5px;font-weight:700;color:#fff;background:var(--err);padding:2px 6px;border-radius:100px;margin-left:6px;letter-spacing:.03em}
-  .promo-line{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ok);padding:5px 0}
-  .view{font-size:12.5px;color:var(--gold);font-weight:600;white-space:nowrap;padding-bottom:3px}
+/* Header */
+header{position:sticky; top:0; z-index:40; background:color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter:blur(16px); border-bottom:1px solid var(--line-soft);}
+header::after{content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:linear-gradient(90deg,transparent 6%,var(--gold-deep) 50%,transparent 94%); opacity:.7}
+.nav{max-width:1200px; margin:0 auto; padding:14px 20px; display:flex; align-items:center; gap:18px}
+.brand{display:flex; align-items:center; gap:10px; text-decoration:none; margin-right:auto}
+.brand img{height:46px; width:auto; border-radius:8px}
+.brand .word{font-family:'Cinzel',serif; font-weight:600; font-size:1.4rem; letter-spacing:.06em; line-height:1}
+.search{flex:1; min-width:0; max-width:340px; display:flex; align-items:center; gap:9px; background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:9px 15px; transition:border-color .2s;}
+.search:focus-within{border-color:var(--gold-3)}
+.search input{flex:1; min-width:0; background:none; border:none; outline:none; color:var(--cream); font-size:.92rem}
+.search input::placeholder{color:var(--muted-2)}
+.search svg{width:17px; height:17px; stroke:var(--muted); flex:0 0 auto}
+.cart-btn{position:relative; width:44px; height:44px; border-radius:12px; border:1px solid var(--line); background:var(--panel); display:grid; place-items:center; transition:.2s}
+.cart-btn:hover{border-color:var(--gold-3); background:var(--panel-2)}
+.cart-btn svg{width:20px; height:20px; stroke:var(--gold-2)}
+.cart-count{position:absolute; top:-6px; right:-6px; min-width:20px; height:20px; padding:0 5px; border-radius:999px; background:var(--gold-grad); color:#0a0a0d; font-size:.72rem; font-weight:600; display:grid; place-items:center; box-shadow:0 2px 8px rgba(0,0,0,.4)}
 
-  .state{max-width:1160px;margin:0 auto;padding:80px 20px;text-align:center;color:var(--muted)}
-  .state .serif{font-size:28px;color:var(--ink);display:block;margin-bottom:6px}
-  .spinner{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--gold);border-radius:50%;margin:0 auto 16px;animation:spin .8s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
+/* Hero */
+.hero{max-width:1200px; margin:0 auto; padding:58px 20px 22px; position:relative; display:grid; grid-template-columns:1.55fr 1fr; gap:34px; align-items:center}
+.hero-copy{text-align:left}
+.eyebrow{display:flex; align-items:center; gap:12px; font-size:.72rem; letter-spacing:.34em; text-transform:uppercase; color:var(--gold-2); font-weight:500}
+.eyebrow::before{content:""; width:40px; height:1px; background:linear-gradient(90deg,var(--gold-3),transparent)}
+.hero h1{font-family:'Cormorant Garamond',serif; font-weight:600; font-size:clamp(2.4rem,6.5vw,4rem); line-height:1.02; margin:16px 0 12px; letter-spacing:.01em}
+.hero p{color:var(--muted); font-weight:300; max-width:440px; margin:0; font-size:1.04rem; line-height:1.65}
+.hero-ornament{justify-self:center; width:min(290px,74vw); aspect-ratio:1/1; border-radius:50%; display:grid; place-items:center; position:relative; background:radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--gold-2) 12%, transparent), transparent 62%); border:1px solid var(--line-soft)}
+.hero-ornament::before{content:""; position:absolute; inset:16px; border-radius:50%; border:1px solid var(--gold-deep); opacity:.4}
+.hero-ornament::after{content:""; position:absolute; inset:30px; border-radius:50%; border:1px solid var(--line-soft)}
+.hero-ornament .mono{font-family:'Cinzel',serif; font-size:clamp(2.4rem,7vw,3.6rem); letter-spacing:.08em}
+.hero-ornament img{width:66%; height:auto; max-height:70%; object-fit:contain; filter:drop-shadow(0 10px 22px rgba(0,0,0,.55))}
+.divider{max-width:1200px; margin:6px auto 2px; padding:0 20px; display:flex; align-items:center; gap:16px; color:var(--gold-3); font-size:.62rem}
+.divider span{flex:1; height:1px; background:linear-gradient(90deg,transparent,var(--line),transparent)}
+@media(max-width:760px){ .hero{grid-template-columns:1fr; text-align:center; padding-top:38px; gap:22px} .hero-copy{text-align:center} .eyebrow{justify-content:center} .hero p{margin:0 auto} .hero-ornament{width:min(200px,58vw)} }
 
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);opacity:0;visibility:hidden;transition:.25s;z-index:50}
-  .overlay.on{opacity:1;visibility:visible}
-  .drawer{position:fixed;top:0;right:0;height:100%;width:min(420px,100%);background:var(--bg2);z-index:60;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:-10px 0 40px rgba(0,0,0,.5);border-left:1px solid var(--line)}
-  .drawer.on{transform:translateX(0)}
-  .drawer-head{padding:20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
-  .drawer-head .serif{font-size:24px;color:var(--gold);flex:1}
-  .close{width:34px;height:34px;border-radius:50%;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted)}
-  .close:hover{color:var(--ink)}
-  .items{flex:1;overflow-y:auto;padding:8px 20px}
-  .ci{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
-  .ci-img{width:64px;height:64px;border-radius:10px;background:var(--surface2);object-fit:cover;flex-shrink:0;overflow:hidden}
-  .ci-img .noimg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--gold);opacity:.35}
-  .ci-info{flex:1;min-width:0}
-  .ci-info h4{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;line-height:1.1}
-  .ci-info .s{font-size:12px;color:var(--muted)}
-  .ci-info .p{font-size:14px;font-weight:600;margin-top:2px;color:var(--gold)}
-  .qty{display:flex;align-items:center;border:1px solid var(--line);border-radius:100px;overflow:hidden;height:30px}
-  .qty button{width:30px;height:30px;font-size:16px;color:var(--ink);display:flex;align-items:center;justify-content:center}
-  .qty button:hover{background:var(--surface2)}
-  .qty span{min-width:24px;text-align:center;font-size:13px;font-weight:600}
-  .rm{font-size:11px;color:var(--err);margin-top:6px}
-  .drawer-foot{padding:20px;border-top:1px solid var(--line);background:var(--surface)}
-  .foot-field{margin-bottom:12px}
-  .foot-field label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
-  .foot-field input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;outline:none;background:var(--bg2);color:var(--ink)}
-  .foot-field input:focus{border-color:var(--gold)}
-  .total{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
-  .total .serif{font-size:22px}
-  .total b{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;color:var(--gold)}
-  .wa{width:100%;padding:15px;background:var(--ok);color:#fff;border-radius:12px;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:9px}
-  .wa:hover{filter:brightness(1.08)}
-  .cart-empty{text-align:center;padding:60px 20px;color:var(--muted)}
-  .cart-empty .serif{font-size:22px;color:var(--ink);display:block;margin-bottom:4px}
+/* Filtros */
+.filters{max-width:1200px; margin:0 auto; padding:18px 20px 6px; display:flex; gap:9px; flex-wrap:wrap; align-items:center; justify-content:center}
+.flabel{font-size:.64rem; letter-spacing:.26em; text-transform:uppercase; color:var(--gold-3); margin-right:4px}
+.chip{padding:8px 17px; border-radius:3px; border:1px solid var(--line); background:transparent; color:var(--muted); font-size:.8rem; letter-spacing:.05em; transition:.2s}
+.chip:hover{color:var(--gold-1); border-color:var(--gold-deep)}
+.chip.active{color:var(--bg); background:var(--gold-grad); border-color:transparent; font-weight:600}
+.filters .count{flex-basis:100%; text-align:center; color:var(--muted-2); font-size:.78rem; margin-top:6px}
 
-  .modal{position:fixed;inset:0;z-index:70;display:none;align-items:flex-start;justify-content:center;padding:20px;background:rgba(0,0,0,.75);overflow-y:auto}
-  .modal.on{display:flex}
-  .modal-box{background:var(--bg2);border:1px solid var(--line);border-radius:20px;max-width:520px;width:100%;overflow:hidden;position:relative;margin:auto}
-  .m-hero{position:relative;aspect-ratio:1/1;background:var(--surface2)}
-  .m-hero img{width:100%;height:100%;object-fit:cover}
-  .m-hero .noimg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--gold);opacity:.35}
-  .m-hero .m-tags{position:absolute;left:16px;bottom:14px;display:flex;gap:6px}
-  .m-hero .m-tags .tag{background:rgba(0,0,0,.62);color:var(--ink);border-color:var(--line2)}
-  .m-close{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;background:rgba(23,21,15,.6);border:1px solid var(--line2);font-size:22px;color:#fff;display:flex;align-items:center;justify-content:center;z-index:2}
-  .m-body{padding:22px}
-  .m-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-  .m-body h2{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:var(--ink);line-height:1.05}
-  .m-body .m-eyebrow{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
-  .m-price{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--gold);white-space:nowrap;text-align:right}
-  .m-price small{display:block;font-family:'Inter';font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
-  .m-desc{color:var(--ink);font-size:13.5px;margin:12px 0 4px;opacity:.92;line-height:1.65}
-  .m-sizes-lbl{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:18px 0 10px}
-  .sizes{display:flex;flex-wrap:wrap;gap:8px}
-  .size{padding:10px 16px;border:1px solid var(--line);background:var(--surface);border-radius:12px;font-size:13.5px;font-weight:500;color:var(--ink);transition:.15s}
-  .size:hover{border-color:var(--gold)}
-  .size.on{background:var(--gold);color:var(--on-gold);border-color:var(--gold);font-weight:600}
-  .m-actions{margin-top:20px;display:flex;flex-direction:column;gap:10px}
-  .btn-add{width:100%;padding:14px;background:linear-gradient(135deg,var(--gold2),var(--gold));color:var(--on-gold);border-radius:12px;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
-  .btn-add:hover{background:linear-gradient(135deg,var(--gold2),var(--gold-deep))}
-  .btn-solo{width:100%;padding:14px;background:var(--ok);color:#fff;border-radius:12px;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
-  .btn-solo:hover{filter:brightness(1.08)}
+/* Grid */
+.grid{max-width:1200px; margin:0 auto; padding:22px 20px 70px; display:grid; grid-template-columns:repeat(auto-fill,minmax(238px,1fr)); gap:22px}
+.card{position:relative; background:linear-gradient(180deg,var(--panel),var(--bg-2)); border:1px solid rgba(168,132,63,.30); border-radius:20px 4px 20px 4px; overflow:hidden; text-align:left; transition:transform .28s cubic-bezier(.2,.8,.2,1),box-shadow .28s,border-color .28s; display:flex; flex-direction:column}
+.card:hover{transform:translateY(-5px); border-color:var(--gold-2); box-shadow:0 26px 54px rgba(0,0,0,.55)}
+.card .imgwrap{aspect-ratio:1/1; background:radial-gradient(140px 140px at 50% 40%, var(--panel) 0%, transparent 72%), var(--bg-2); display:grid; place-items:center; padding:22px; overflow:hidden}
+.card .imgwrap img{max-height:100%; object-fit:contain; filter:drop-shadow(0 16px 24px rgba(0,0,0,.55)); transition:transform .45s cubic-bezier(.2,.8,.2,1)}
+.card:hover .imgwrap img{transform:scale(1.06)}
+.card .ph{font-family:'Cormorant Garamond',serif; font-size:2.4rem; color:var(--gold-deep)}
+.card .body{padding:14px 16px 16px; display:flex; flex-direction:column; gap:5px; flex:1; border-top:1px solid var(--line-soft)}
+.card .marca{font-size:.66rem; letter-spacing:.22em; text-transform:uppercase; color:var(--gold-3)}
+.card .nombre{font-family:'Cormorant Garamond',serif; font-size:1.24rem; font-weight:600; line-height:1.12; color:var(--cream)}
+.card .foot{margin-top:auto; padding-top:11px; display:flex; align-items:flex-end; justify-content:space-between; gap:8px}
+.card .precio{display:flex; flex-direction:column; line-height:1.1}
+.card .precio small{color:var(--muted); font-size:.6rem; letter-spacing:.16em; text-transform:uppercase; margin-bottom:3px}
+.card .precio b{font-family:'Cormorant Garamond',serif; font-weight:600; font-size:1.18rem; color:var(--gold-1)}
+.card .ver{width:34px; height:34px; border-radius:50%; border:1px solid var(--gold-deep); color:var(--gold-1); display:grid; place-items:center; font-size:1.05rem; transition:.22s; flex:0 0 auto}
+.card:hover .ver{background:var(--gold-grad); color:var(--bg); border-color:transparent}
+.badge-dest{position:absolute; top:11px; left:11px; z-index:2; font-size:.6rem; letter-spacing:.16em; text-transform:uppercase; padding:5px 9px; border-radius:999px; background:color-mix(in srgb, var(--bg) 82%, transparent); border:1px solid var(--gold-deep); color:var(--gold-2)}
+.badge-off{position:absolute; top:11px; right:11px; z-index:2; font-size:.68rem; font-weight:700; padding:5px 9px; border-radius:999px; background:var(--danger); color:#fff}
 
-  footer{border-top:1px solid var(--line);margin-top:20px;padding:36px 20px 40px;text-align:center}
-  .foot-logo{width:64px;height:64px;border-radius:50%;border:1px solid var(--line2);object-fit:cover;margin:0 auto 14px}
-  footer .fname{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--gold);margin-bottom:14px}
-  footer .socials{margin-top:0;margin-bottom:18px}
-  footer .adm{color:var(--muted);font-size:12.5px}
-  footer .adm a{color:var(--gold)}
+.state{grid-column:1/-1; text-align:center; color:var(--muted); padding:70px 20px}
+.spinner{width:34px; height:34px; margin:0 auto 14px; border-radius:50%; border:2px solid var(--line); border-top-color:var(--gold-2); animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--gold);color:var(--on-gold);padding:12px 20px;border-radius:100px;font-size:14px;font-weight:600;opacity:0;transition:.3s;z-index:90;pointer-events:none}
-  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+/* Modal producto */
+.overlay{position:fixed; inset:0; z-index:60; background:rgba(4,4,6,.72); backdrop-filter:blur(6px); display:none; align-items:flex-start; justify-content:center; overflow-y:auto; padding:24px 16px}
+.overlay.open{display:flex}
+.sheet{width:100%; max-width:560px; background:linear-gradient(180deg,var(--panel),var(--bg-2)); border:1px solid var(--line); border-radius:22px; box-shadow:var(--shadow); overflow:hidden; animation:rise .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes rise{from{opacity:0; transform:translateY(24px)}to{opacity:1; transform:none}}
+.sheet .hd{position:relative; background:radial-gradient(220px 180px at 50% 35%,var(--panel) 0%,transparent 70%), var(--bg-2); padding:34px 24px; display:grid; place-items:center}
+.sheet .hd img{max-height:290px; object-fit:contain; filter:drop-shadow(0 22px 30px rgba(0,0,0,.6))}
+.sheet .close{position:absolute; top:14px; right:14px; width:38px; height:38px; border-radius:10px; background:rgba(0,0,0,.4); display:grid; place-items:center}
+.sheet .close svg{width:18px; height:18px; stroke:var(--cream)}
+.gallery{display:flex; gap:9px; justify-content:center; flex-wrap:wrap; padding:14px 20px 4px; background:var(--bg-2)}
+.gthumb{width:54px; height:54px; border-radius:10px; overflow:hidden; border:1px solid var(--line); opacity:.6; transition:.2s}
+.gthumb.active{opacity:1; border-color:var(--gold-3)}
+.gthumb img{width:100%; height:100%; object-fit:cover}
+.sheet .bd{padding:22px 24px 26px}
+.sheet .marca{font-size:.7rem; letter-spacing:.24em; text-transform:uppercase; color:var(--gold-3)}
+.sheet h2{font-family:'Cormorant Garamond',serif; font-size:1.9rem; font-weight:600; margin:4px 0 6px}
+.sheet .genero{color:var(--muted); font-size:.9rem; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.catchip{padding:3px 10px; border-radius:999px; border:1px solid var(--gold-deep); color:var(--gold-2); font-size:.7rem; letter-spacing:.06em}
+.section-t{font-size:.72rem; letter-spacing:.2em; text-transform:uppercase; color:var(--gold-3); margin:20px 0 10px; font-weight:500}
+.notas-img{display:flex; gap:12px; flex-wrap:wrap}
+.nota{display:flex; flex-direction:column; align-items:center; gap:6px; width:62px}
+.nota .ph{width:56px; height:56px; border-radius:50%; overflow:hidden; background:var(--panel-2); border:1px solid var(--line); display:grid; place-items:center; color:var(--gold-deep); font-family:'Cormorant Garamond',serif; font-size:1.3rem}
+.nota .ph img{width:100%; height:100%; object-fit:cover}
+.nota span{font-size:.68rem; color:var(--muted); text-align:center; line-height:1.2}
+.piramide, .perfil{display:flex; flex-direction:column; gap:6px}
+.piramide .row, .perfil .p{display:flex; gap:12px; background:var(--panel-2); border:1px solid var(--line-soft); border-radius:10px; padding:9px 13px}
+.piramide .k, .perfil .k{color:var(--gold-2); font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; min-width:70px}
+.piramide .v, .perfil .v{color:var(--cream); font-size:.86rem}
+.perfil{flex-direction:row; gap:10px}
+.perfil .p{flex:1; flex-direction:column; gap:3px}
+.tallas{display:flex; gap:9px; flex-wrap:wrap}
+.talla{position:relative; min-width:88px; padding:12px 14px; border-radius:12px; border:1.5px solid var(--line); background:var(--panel-2); text-align:center; transition:.18s}
+.talla:hover{border-color:var(--gold-deep)}
+.talla.sel{border-color:var(--gold-2); background:linear-gradient(180deg,var(--panel-2),var(--bg-2))}
+.talla.oferta{border-color:var(--danger)}
+.talla .off{position:absolute; top:-9px; right:-6px; background:var(--danger); color:#fff; font-size:.62rem; font-weight:700; padding:2px 6px; border-radius:999px}
+.talla .ml{font-size:.82rem; color:var(--gold-1); font-weight:500}
+.talla .pr{font-size:.9rem; margin-top:3px}
+.talla .antes{color:var(--muted-2); text-decoration:line-through; font-size:.72rem; margin-right:5px}
+.envio{display:flex; align-items:center; gap:9px; margin:16px 0 4px; color:var(--muted); font-size:.8rem}
+.envio svg{width:20px; height:20px; stroke:var(--gold-3); fill:none}
+.add-cta{width:100%; margin-top:16px; padding:14px; border-radius:14px; background:var(--gold-grad); color:#0a0a0d; font-weight:600; font-size:.95rem; transition:.2s}
+.add-cta:disabled{opacity:.5; cursor:not-allowed; background:var(--panel-2); color:var(--muted)}
 
-  @media(max-width:640px){
-    .brand{font-size:19px}
-    .cart-btn .lbl{display:none}
-    .search{order:3;flex-basis:100%;max-width:none;margin-left:0}
-    .bar{flex-wrap:wrap}
-  }
-  .pricemode-wrap{max-width:1160px;margin:0 auto;padding:16px 20px 0;display:flex;flex-direction:column;align-items:center}
-  .pricemode{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:100px;padding:4px;gap:4px}
-  .pm-btn{padding:9px 22px;border-radius:100px;font-size:13.5px;font-weight:600;color:var(--muted);transition:.15s}
-  .pm-btn.on{background:var(--gold);color:var(--on-gold)}
-  .size.out{opacity:.45;cursor:not-allowed}
-  .mayor-note{margin:0 0 14px;padding:11px 13px;border-radius:12px;font-size:12.5px;font-weight:600;text-align:center;background:var(--surface2);border:1px solid var(--line2);color:var(--ink)}
-  .mayor-note.on{background:rgba(42,174,121,.14);border-color:rgba(42,174,121,.55);color:#7fe7bd}
-  .mayor-note .bar{height:5px;border-radius:100px;background:rgba(255,255,255,.08);margin-top:9px;overflow:hidden}
-  .mayor-note .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width .3s}
-  .pm-note{text-align:center;font-size:11.5px;color:var(--muted);margin-top:9px;padding:0 16px;max-width:520px}
-  .ladder{max-width:1160px;margin:12px auto 0;padding:10px 16px;text-align:center;font-size:11.5px;color:var(--muted);line-height:1.7;background:var(--surface);border:1px solid var(--line);border-radius:12px}
-  #ladderInfo{padding:0 20px}
-  .ladder b{color:var(--gold)}
-  .cart-tip{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin:0 0 8px;font-size:12px;color:var(--ink)}
-  .cart-tip.ok{background:rgba(42,174,121,.14);border-color:rgba(42,174,121,.5);color:#7fe7bd}
-  .cart-tip span{color:var(--muted)}
-  .confirm-row{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ink);margin:2px 0 8px;cursor:pointer}
-  .confirm-row input{width:18px;height:18px;accent-color:var(--gold);flex:none}
-  .order-msg{font-size:12.5px;margin:0 0 10px;line-height:1.4}
-  .order-msg:empty{margin:0}
-  .order-msg.ok{color:#7fe7bd}
-  .order-msg.err{color:var(--err)}
-  .stk-line{font-size:11.5px;color:var(--muted);margin:6px 0 0}
-  .stk-line.low{color:#e0a94b;font-weight:600}
-  .m-stock{font-size:12px;color:var(--muted);margin:0 0 12px}
-  .m-stock.low{color:#e0a94b;font-weight:600}
-  .m-stock.out{color:var(--err);font-weight:600}
-  .qty-pick{margin:18px 0 4px}
-  .qp-lbl{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
-  .qp-lbl span{text-transform:none;letter-spacing:0;font-weight:500}
-  .qp-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
-  .qp-stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:100px;overflow:hidden;background:var(--bg2)}
-  .qp-stepper button{width:40px;height:40px;font-size:18px;color:var(--gold);background:transparent}
-  .qp-stepper input{width:56px;height:40px;text-align:center;border:none;background:transparent;color:var(--ink);font-size:15px;font-weight:600;outline:none}
-  .qp-chips{display:flex;flex-wrap:wrap;gap:6px}
-  .qp-chip{padding:8px 12px;border:1px solid var(--line);border-radius:100px;font-size:12.5px;font-weight:600;color:var(--muted);background:var(--surface2)}
-  .qp-chip.on{background:var(--gold);border-color:var(--gold);color:var(--on-gold)}
-  .ochips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 14px}
-  .ochip{font-size:11.5px;font-weight:600;padding:6px 10px;border-radius:100px;border:1px solid var(--line);background:var(--surface2);color:var(--muted)}
-  .ochip small{font-weight:500;opacity:.85}
-  .ochip.avail{border-color:var(--gold);color:var(--gold)}
-  .ochip.hint{border-color:var(--gold);color:var(--gold)}
-  .ochip.on{background:rgba(42,174,121,.16);border-color:rgba(42,174,121,.55);color:#7fe7bd}
-  .ochip.off{opacity:.4}
-  #offerBar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:50;align-items:center;gap:8px;max-width:calc(100% - 28px);padding:12px 18px;border-radius:100px;border:none;background:linear-gradient(135deg,var(--gold2),var(--gold));color:var(--on-gold);font-size:12.5px;font-weight:600;box-shadow:0 12px 32px rgba(2,12,24,.55);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #offerBar b{font-weight:800}
-  #offerBar .ob-c{font-weight:800}
-  @media(min-width:900px){ #offerBar{left:auto;right:24px;transform:none} }
-  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* Carrito drawer */
+.drawer{position:fixed; top:0; right:0; height:100%; width:100%; max-width:420px; z-index:70; background:linear-gradient(180deg,var(--panel),var(--bg-2)); border-left:1px solid var(--line); transform:translateX(100%); transition:transform .3s cubic-bezier(.2,.8,.2,1); display:flex; flex-direction:column}
+.drawer.open{transform:none}
+.drawer .top{display:flex; align-items:center; justify-content:space-between; padding:18px 20px; border-bottom:1px solid var(--line-soft)}
+.drawer .top h3{font-family:'Cormorant Garamond',serif; font-size:1.5rem; font-weight:600}
+.drawer .top button svg{width:20px; height:20px; stroke:var(--cream)}
+.cart-list{flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:12px}
+.cart-empty{text-align:center; color:var(--muted); padding:60px 10px; line-height:1.7}
+.ci{display:flex; gap:12px; align-items:center; background:var(--panel-2); border:1px solid var(--line-soft); border-radius:12px; padding:10px}
+.ci .th{width:52px; height:52px; border-radius:9px; overflow:hidden; background:var(--bg-2); flex:0 0 auto; display:grid; place-items:center}
+.ci .th img{width:100%; height:100%; object-fit:cover}
+.ci .info{flex:1; min-width:0}
+.ci .n{font-size:.9rem; color:var(--cream); font-weight:500}
+.ci .m{font-size:.72rem; color:var(--muted)}
+.ci .pr{font-size:.86rem; color:var(--gold-1); margin-top:2px}
+.ci .qty{display:inline-flex; align-items:center; gap:10px; margin-top:5px; background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:2px 4px}
+.ci .qty button{width:22px; height:22px; color:var(--gold-2); font-size:1rem}
+.ci .rm{color:var(--danger); font-size:.72rem; align-self:flex-start}
+.promo-line{color:var(--ok); font-size:.8rem; padding:2px 0}
+.upsell{background:rgba(217,180,90,.1); border:1px dashed var(--gold-deep); color:var(--gold-1); border-radius:10px; padding:9px 12px; font-size:.8rem; margin-top:6px}
+.drawer .bot{border-top:1px solid var(--line-soft); padding:16px 20px 22px}
+.pay-toggle{display:flex; gap:8px; margin-bottom:12px}
+.pay-toggle button{flex:1; padding:10px; border-radius:10px; border:1.5px solid var(--line); background:var(--panel-2); color:var(--muted); font-size:.82rem; font-weight:500}
+.pay-toggle button.on{border-color:var(--yape); color:#c9b6ff; background:rgba(124,58,237,.12)}
+.pay-toggle button.on.coord{border-color:var(--gold-3); color:var(--gold-1); background:rgba(184,137,58,.12)}
+.yape-box{background:rgba(124,58,237,.1); border:1px solid rgba(124,58,237,.4); border-radius:12px; padding:12px 14px; margin-bottom:12px; font-size:.82rem}
+.yape-box b{color:#c9b6ff}
+.yape-box input{width:100%; margin-top:8px; padding:9px 12px; border-radius:8px; border:1.5px solid var(--yape); background:var(--panel); color:var(--cream); text-align:center; letter-spacing:.12em; font-weight:600; outline:none}
+.tot{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px}
+.tot .k{color:var(--muted)}
+.tot.big .v{font-size:1.4rem; color:var(--gold-1); font-weight:600}
+.tot .tach{color:var(--muted-2); text-decoration:line-through; font-size:.82rem}
+.ahorro{color:var(--ok); font-size:.82rem; text-align:right; margin-bottom:10px}
+.wa{width:100%; margin-top:10px; padding:15px; border-radius:14px; background:var(--wa); color:#fff; font-weight:600; font-size:.95rem; display:flex; align-items:center; justify-content:center; gap:10px}
+.wa svg{width:20px; height:20px; fill:#fff}
+
+.social{max-width:1200px; margin:0 auto; padding:0 20px 40px; display:flex; gap:14px; justify-content:center}
+.social a{width:42px; height:42px; border-radius:12px; border:1px solid var(--line); background:var(--panel); display:grid; place-items:center}
+.social svg{width:20px; height:20px; fill:var(--gold-2)}
+
+.toast{position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--panel-2); border:1px solid var(--gold-deep); color:var(--cream); padding:12px 20px; border-radius:999px; font-size:.86rem; opacity:0; pointer-events:none; transition:.3s; z-index:90}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+
+@media(max-width:560px){.brand .word{font-size:1.2rem}.sheet h2{font-size:1.6rem}}
+
+/* ===== Pestañas de vista: Catálogo / Promociones ===== */
+.viewtabs{max-width:1200px; margin:10px auto 0; padding:0 20px; display:flex; gap:8px; justify-content:center}
+.vtab{padding:10px 22px; border-radius:999px; border:1px solid var(--line); background:var(--panel); color:var(--muted); font-size:.86rem; letter-spacing:.04em; transition:.2s}
+.vtab:hover{color:var(--gold-1); border-color:var(--gold-deep)}
+.vtab.active{color:var(--bg); background:var(--gold-grad); border-color:transparent; font-weight:600}
+.vtab .fire{margin-left:6px}
+
+/* ===== Tarjeta de combo ===== */
+.badge-oferta{position:absolute; top:11px; left:11px; z-index:2; font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; padding:5px 11px; border-radius:999px; background:var(--gold-grad); color:var(--bg); font-weight:700}
+.card .precio .antes{color:var(--muted-2); text-decoration:line-through; font-size:.8rem; font-weight:400; margin-right:6px; -webkit-text-fill-color:var(--muted-2)}
+.combos-grid .imgwrap{padding:16px}
+
+/* ===== Modal combo: incluye + tallas con sprays + combínalo y ahorra ===== */
+.incluye{display:flex; flex-wrap:wrap; gap:7px; margin-top:4px}
+.incluye .it{font-size:.76rem; color:var(--cream); background:var(--panel-2); border:1px solid var(--line-soft); border-radius:999px; padding:4px 11px}
+.tallas .talla .spr{font-size:.66rem; color:var(--muted); margin-top:2px}
+.talla .best{position:absolute; top:-9px; left:50%; transform:translateX(-50%); background:var(--bg); color:var(--gold-1); border:1px solid var(--gold-deep); font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap}
+.talla.best-on{border-color:var(--gold-2)}
+.combo-box{margin-top:18px; border:1px solid var(--line); border-radius:14px; overflow:hidden}
+.combo-box .cb-h{padding:11px 14px; background:var(--panel-2); font-size:.76rem; letter-spacing:.16em; text-transform:uppercase; color:var(--gold-2); border-bottom:1px solid var(--line-soft)}
+.addon{display:flex; align-items:center; gap:11px; padding:11px 14px; border-bottom:1px solid var(--line-soft); cursor:pointer; transition:background .15s}
+.addon:last-child{border-bottom:none}
+.addon:hover{background:var(--panel-2)}
+.addon input{width:20px; height:20px; accent-color:var(--gold-3); flex:0 0 auto}
+.addon .th{width:42px; height:42px; border-radius:9px; overflow:hidden; background:var(--bg-2); border:1px solid var(--line-soft); flex:0 0 auto; display:grid; place-items:center; color:var(--gold-deep); font-family:'Cormorant Garamond',serif}
+.addon .th img{width:100%; height:100%; object-fit:cover}
+.addon .info{flex:1; min-width:0}
+.addon .info .n{font-size:.88rem; color:var(--cream)}
+.addon .info .m{font-size:.72rem; color:var(--muted)}
+.addon .pr{text-align:right; white-space:nowrap}
+.addon .pr .antes{display:block; color:var(--muted-2); text-decoration:line-through; font-size:.72rem}
+.addon .pr b{color:var(--gold-1); font-size:.9rem; font-weight:600}
+.addon .best2{background:var(--bg); color:var(--gold-1); border:1px solid var(--gold-deep); font-size:.56rem; letter-spacing:.08em; text-transform:uppercase; font-weight:700; padding:2px 7px; border-radius:999px; margin-left:6px}
+.combo-qty{display:flex; align-items:center; gap:14px; margin-top:16px; justify-content:center}
+.combo-qty .lbl{color:var(--muted); font-size:.82rem}
+.combo-qty .stepper{display:inline-flex; align-items:center; gap:14px; background:var(--panel-2); border:1px solid var(--line); border-radius:999px; padding:5px 8px}
+.combo-qty .stepper button{width:26px; height:26px; color:var(--gold-2); font-size:1.1rem}
+.combo-total{display:flex; justify-content:space-between; align-items:baseline; margin-top:16px; padding-top:14px; border-top:1px solid var(--line-soft)}
+.combo-total .k{color:var(--muted)}
+.combo-total .v{font-family:'Cormorant Garamond',serif; font-size:1.5rem; color:var(--gold-1); font-weight:600}
+
+/* ===== Regalo por compra ===== */
+.gift-box{background:rgba(217,180,90,.1); border:1px solid var(--gold-deep); border-radius:12px; padding:12px 14px; margin-top:10px}
+.gift-box .gift-h{color:var(--gold-1); font-size:.9rem; font-weight:600; margin-bottom:9px}
+.gift-row{display:flex; gap:8px}
+.gift-row select{flex:1; min-width:0; background:var(--panel); border:1px solid var(--gold-deep); color:var(--cream); border-radius:9px; padding:9px 11px; font-size:.86rem; outline:none}
+.gift-row button{flex:0 0 auto; background:var(--gold-grad); color:var(--bg); font-weight:600; border-radius:9px; padding:9px 16px; font-size:.85rem}
+.ci.gift{border-color:var(--gold-deep); background:rgba(217,180,90,.07)}
+.ci.gift .th{font-size:1.3rem}
+.gift-tag{font-size:.66rem; color:var(--bg); background:var(--gold-grad); border-radius:999px; padding:2px 8px; font-weight:700; margin-left:4px; letter-spacing:.04em}
+.ci.gift .m{color:var(--gold-2)}
+
+/* ===== Aviso "precio por mayor" en el carrito ===== */
+.mayor-note{margin:0 0 12px; padding:11px 13px; border-radius:12px; font-size:.82rem; font-weight:500; text-align:center; background:var(--panel-2); border:1px solid var(--line); color:var(--muted)}
+.mayor-note.on{background:rgba(123,216,143,.12); border-color:rgba(123,216,143,.5); color:var(--ok)}
+.mayor-note .bar{height:5px; border-radius:999px; background:rgba(255,255,255,.08); margin-top:9px; overflow:hidden}
+.mayor-note .bar i{display:block; height:100%; background:var(--gold-grad); transition:width .3s}
+.talla .may{display:block; font-size:.62rem; color:var(--gold-2); margin-top:3px; letter-spacing:.02em}
+.ci .may-tag{font-size:.64rem; color:var(--ok); margin-left:5px}
+
+/* ===== Secciones NUEVAS: Preorden y Consolidado ===== */
+.badge-pre{position:absolute; top:11px; left:11px; z-index:2; font-size:.6rem; letter-spacing:.14em; text-transform:uppercase; padding:5px 10px; border-radius:999px; background:color-mix(in srgb, var(--bg) 82%, transparent); border:1px solid var(--gold-deep); color:var(--gold-1); font-weight:600}
+.badge-con{position:absolute; top:11px; left:11px; z-index:2; font-size:.6rem; letter-spacing:.14em; text-transform:uppercase; padding:5px 10px; border-radius:999px; background:var(--gold-grad); color:var(--bg); font-weight:700}
+.cupo-line{font-size:.74rem; margin-top:2px}
+.cupo-line.full{color:var(--danger)} .cupo-line.left{color:var(--gold-2)}
+.escala-mini{font-size:.72rem; color:var(--ok); margin-top:2px}
+
+/* Escala de precios (consolidado) y barra de progreso */
+.escala{display:flex; flex-direction:column; gap:7px; margin-top:4px}
+.escala .er{display:flex; justify-content:space-between; align-items:center; gap:10px; background:var(--panel-2); border:1px solid var(--line-soft); border-radius:10px; padding:9px 13px; font-size:.86rem; transition:.2s}
+.escala .er.active{border-color:var(--gold-2); background:linear-gradient(180deg,var(--panel-2),var(--bg-2))}
+.escala .er .q{color:var(--muted)} .escala .er.active .q{color:var(--gold-1)}
+.escala .er .pp{color:var(--cream); font-weight:600} .escala .er.active .pp{color:var(--gold-1)}
+.escala .er .now{font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; color:var(--bg); background:var(--gold-grad); padding:2px 8px; border-radius:999px; font-weight:700; margin-left:6px}
+.prog{margin-top:14px}
+.prog .lbl{display:flex; justify-content:space-between; font-size:.78rem; color:var(--muted); margin-bottom:7px}
+.prog .bar{height:8px; border-radius:999px; background:rgba(255,255,255,.07); overflow:hidden}
+.prog .bar i{display:block; height:100%; background:var(--gold-grad); transition:width .4s}
+.prog .next{color:var(--ok); font-size:.78rem; margin-top:8px; text-align:center}
+
+/* Subir comprobante de pago */
+.qty-pick{display:flex; align-items:center; gap:16px; margin:14px 0; justify-content:center}
+.qty-pick .stepper{display:inline-flex; align-items:center; gap:16px; background:var(--panel-2); border:1px solid var(--line); border-radius:999px; padding:6px 10px}
+.qty-pick .stepper button{width:28px; height:28px; color:var(--gold-2); font-size:1.15rem}
+.qty-pick .stepper span{min-width:26px; text-align:center; font-size:1.05rem}
+.pay-up{margin-top:6px; border:1px dashed var(--gold-deep); border-radius:12px; padding:14px; text-align:center; background:rgba(217,180,90,.06)}
+.pay-up label{display:block; font-size:.8rem; color:var(--gold-1); margin-bottom:8px; text-transform:none; letter-spacing:0}
+.pay-up input[type=file]{width:100%; font-size:.82rem; color:var(--muted)}
+.pay-thumbs{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; justify-content:center}
+.pay-thumbs .pt{position:relative; width:62px; height:62px; border-radius:9px; overflow:hidden; border:1px solid var(--line)}
+.pay-thumbs .pt img{width:100%; height:100%; object-fit:cover}
+.pay-thumbs .pt button{position:absolute; top:2px; right:2px; width:20px; height:20px; border-radius:6px; background:rgba(0,0,0,.65); color:#fff; font-size:.85rem; display:grid; place-items:center}
+.miniform{display:flex; flex-direction:column; gap:9px; margin-top:14px}
+.miniform input, .miniform textarea{width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:9px; color:var(--cream); padding:10px 12px; font-size:.88rem; outline:none; font-family:inherit}
+.miniform input:focus, .miniform textarea:focus{border-color:var(--gold-3)}
+.ok-screen{text-align:center; padding:14px 6px}
+.ok-screen .big{font-family:'Cormorant Garamond',serif; font-size:1.7rem; color:var(--ok); margin:6px 0 4px}
+.ok-screen .cod{display:inline-block; margin:12px 0; padding:10px 18px; border-radius:10px; border:1px dashed var(--gold-deep); font-family:'Cinzel',serif; letter-spacing:.14em; font-size:1.2rem; color:var(--gold-1)}
+.ok-screen p{color:var(--muted); font-size:.88rem; line-height:1.6}
+.status-bar{max-width:1200px; margin:0 auto; padding:2px 20px 0; display:flex; justify-content:center}
+.status-bar button{font-size:.8rem; color:var(--gold-2); border:1px solid var(--line); border-radius:999px; padding:8px 16px; background:var(--panel)}
+.status-bar button:hover{border-color:var(--gold-3)}
+.est-badge{display:inline-block; padding:4px 12px; border-radius:999px; font-size:.82rem; font-weight:600; margin-top:8px}
+.est-badge.pendiente{color:var(--gold-1); border:1px solid var(--gold-deep); background:rgba(184,137,58,.12)}
+.est-badge.confirmado,.est-badge.entregado{color:var(--ok); border:1px solid rgba(123,216,143,.5); background:rgba(123,216,143,.12)}
+.est-badge.rechazado{color:var(--danger); border:1px solid var(--danger); background:rgba(224,121,107,.1)}
 </style>
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#071827">
-<link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
+
+<div id="loader"><img id="loaderLogo" alt=""></div>
+
 <header>
-  <div class="bar">
-    <a class="logo-wrap" href="#top"><img id="logoHeader" alt="Logo" /><span class="brand" id="brand">JC LUXURY STORE</span></a>
+  <div class="nav">
+    <a class="brand" href="#" id="brand"></a>
     <div class="search">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="search" type="search" placeholder="Buscar perfume…" autocomplete="off" />
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg>
+      <input id="q" placeholder="Buscar fragancia...">
     </div>
-    <button id="installBtn" class="install-btn" style="display:none">⇩ Instalar app</button>
-    <button class="cart-btn" id="cartBtn">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
-      <span class="lbl">Carrito</span><span class="count" id="cartCount" style="display:none">0</span>
+    <button class="cart-btn" id="installBtn" style="display:none" aria-label="Instalar app" title="Instalar app">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 3v11" stroke-linecap="round"/><path d="M7 10l5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 20h14" stroke-linecap="round"/></svg>
+    </button>
+    <button class="cart-btn" id="openCart" aria-label="Carrito">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M6 6h15l-1.5 9h-12z" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M6 6L5 3H3" stroke-linecap="round"/></svg>
+      <span class="cart-count" id="cartCount" style="display:none">0</span>
     </button>
   </div>
 </header>
 
-<a id="top"></a>
 <section class="hero">
-  <img class="hero-logo" id="logoHero" alt="Logo" />
-  <h1 id="heroTitle">JC LUXURY STORE</h1>
-  <p id="heroTag"></p>
-  <div class="socials" id="socialsHero"></div>
+  <div class="hero-copy">
+    <div class="eyebrow" id="tagline"></div>
+    <h1 class="gold-text" id="heroTitle"></h1>
+    <p id="heroSub">Decants y fragancias seleccionadas. Elige tu tamaño y pide por WhatsApp.</p>
+  </div>
+  <div class="hero-ornament" id="heroOrn"><div class="mono gold-text">◆</div></div>
 </section>
 
-<div class="pricemode-wrap">
-  <div class="pricemode" id="priceMode">
-    <button class="pm-btn on" data-mode="min" id="pmMin">Minorista</button>
-    <button class="pm-btn" data-mode="may" id="pmMay">Mayorista</button>
-  </div>
-  <div class="pm-note" id="pmNote"></div>
-</div>
-<div id="ladderInfo"></div>
+<div class="divider"><span></span>◆<span></span></div>
 
-<div class="filters" id="catFilters"></div>
-<div class="filters" id="genFilters" style="padding-top:0">
-  <span class="sep" style="display:none"></span>
-  <div class="sort">
-    <select id="sort">
-      <option value="destacado">Destacados primero</option>
-      <option value="precio-asc">Precio: menor a mayor</option>
-      <option value="precio-desc">Precio: mayor a menor</option>
-      <option value="nombre">Nombre A–Z</option>
-    </select>
-  </div>
+<div class="viewtabs" id="viewtabs" style="display:none">
+  <button class="vtab active" data-view="catalogo">Catálogo</button>
+  <button class="vtab" data-view="promos" id="tabPromos" style="display:none">Promociones<span class="fire">🔥</span></button>
+  <button class="vtab" data-view="preorden" id="tabPre" style="display:none">Preorden<span class="fire">✈️</span></button>
+  <button class="vtab" data-view="consolidado" id="tabCon" style="display:none">Consolidado<span class="fire">🤝</span></button>
 </div>
 
-<div class="count-line" id="countLine"></div>
-<main class="grid" id="grid"></main>
-<div id="stateBox"></div>
+<div class="status-bar" id="statusBar" style="display:none"><button id="btnEstado">🔎 Consultar mi preorden / consolidado</button></div>
 
-<footer>
-  <img class="foot-logo" id="logoFoot" alt="Logo" />
-  <div class="fname" id="footName">JC LUXURY STORE</div>
-  <div class="socials" id="socialsFoot"></div>
-</footer>
+<div class="filters" id="filters"></div>
+<div class="grid" id="grid"><div class="state"><div class="spinner"></div>Cargando catálogo...</div></div>
+<div class="grid combos-grid" id="combosGrid" style="display:none"></div>
+<div class="grid" id="preGrid" style="display:none"></div>
+<div class="grid" id="conGrid" style="display:none"></div>
 
-<div class="overlay" id="overlay"></div>
-<aside class="drawer" id="drawer" aria-label="Carrito de compras">
-  <div class="drawer-head"><span class="serif">Tu pedido</span><button class="close" id="closeCart" aria-label="Cerrar">×</button></div>
-  <div class="items" id="cartItems"></div>
-  <div class="drawer-foot" id="cartFoot" style="display:none">
-    <div class="foot-field"><label for="cName">Tu nombre (para el pedido)</label><input id="cName" type="text" placeholder="Ej. María López" /></div>
-    <div class="foot-field"><label for="cPhone">Tu WhatsApp (opcional)</label><input id="cPhone" type="tel" placeholder="Ej. 999 888 777" /></div>
-    <div class="total"><span class="serif">Total</span><b id="cartTotal">S/ 0</b></div>
-    <label class="confirm-row"><input type="checkbox" id="confirmChk"> <span>Confirmo mi pedido de compra</span></label>
-    <div class="order-msg" id="orderMsg"></div>
-    <button class="wa" id="waBtn">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.2-1.7-.9-2-1-.3-.1-.5-.1-.6.1-.2.3-.7 1-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.6-1.5-.9-2-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3M12 2a10 10 0 0 0-8.6 15l-1.3 4.8 4.9-1.3A10 10 0 1 0 12 2"/></svg>
-      Pedir por WhatsApp
-    </button>
+<div class="social" id="social"></div>
+
+<!-- Modal producto -->
+<div class="overlay" id="overlay"><div class="sheet" id="sheet"></div></div>
+
+<!-- Carrito -->
+<div class="drawer" id="drawer">
+  <div class="top">
+    <h3>Tu pedido</h3>
+    <button data-close-cart aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
   </div>
-</aside>
+  <div class="cart-list" id="cartList"></div>
+  <div class="bot" id="cartBot" style="display:none"></div>
+</div>
 
-<div class="modal" id="modal"><div class="modal-box" id="modalBox"></div></div>
 <div class="toast" id="toast"></div>
 
-<button id="offerBar" onclick="openCart()" style="display:none"></button>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script>
-const LOGO = "data:image/jpeg;base64,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";
-const money = n => CONFIG.MONEDA + " " + (Math.round(n*100)/100).toLocaleString('es-PE');
+/* Aplica los colores de CONFIG.TEMA sobre las variables del diseño */
+(function(){ if(!window.CONFIG||!CONFIG.TEMA) return; var t=CONFIG.TEMA, r=document.documentElement;
+  Object.keys(t).forEach(function(k){ if(t[k]) r.style.setProperty('--'+k, t[k]); });
+  if(!t['gold-grad'] && t['gold-1'] && t['gold-3'])
+    r.style.setProperty('--gold-grad','linear-gradient(135deg,'+t['gold-1']+' 0%,'+(t['gold-2']||t['gold-3'])+' 30%,'+t['gold-3']+' 60%,'+t['gold-1']+' 100%)');
+  var m=document.querySelector('meta[name="theme-color"]'); if(m&&t['bg']) m.setAttribute('content', t['bg']);
+})();
+</script>
+<script src="promos.js"></script>
+<script>
+/* ================= Inicialización ================= */
 const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+const $ = s => document.querySelector(s);
+const fmt = n => CONFIG.MONEDA + ' ' + Number(n).toFixed(2);
+const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+/* Pantalla de carga: usa el logo de carga (fondo blanco/letras negras) */
+(function(){ const l=$('#loaderLogo'); if(!l) return;
+  if(CONFIG.LOGO_CARGA) l.src=CONFIG.LOGO_CARGA;
+  else l.outerHTML = `<div class="word">${esc(CONFIG.TIENDA_NOMBRE||'')}</div>`;
+})();
+
+/* Branding desde config */
+$('#brand').innerHTML = CONFIG.LOGO_URL ? `<img src="${CONFIG.LOGO_URL}" alt="${esc(CONFIG.TIENDA_NOMBRE)}" onerror="this.outerHTML='&lt;span class=\\'word gold-text\\'&gt;${esc(CONFIG.TIENDA_NOMBRE)}&lt;/span&gt;'">` : `<span class="word gold-text">${esc(CONFIG.TIENDA_NOMBRE)}</span>`;
+$('#tagline').textContent = CONFIG.TIENDA_TAGLINE || '';
+$('#heroTitle').textContent = CONFIG.TIENDA_NOMBRE;
+if(CONFIG.HERO_SUB) $('#heroSub').textContent = CONFIG.HERO_SUB;
+(function(){ const orn=$('#heroOrn'); if(!orn) return;
+  const w=(CONFIG.TIENDA_NOMBRE||'').trim().split(/\s+/).filter(Boolean);
+  let m=w.length?(w[0].length<=4?w[0]:w.map(x=>x[0]).join('')):'?';
+  const mono='<div class="mono gold-text">'+esc(m.toUpperCase().slice(0,4))+'</div>';
+  if(CONFIG.LOGO_URL){
+    orn.innerHTML='<img alt="'+esc(CONFIG.TIENDA_NOMBRE||'')+'">';
+    const im=orn.querySelector('img');
+    im.onerror=function(){ orn.innerHTML=mono; };
+    im.src=CONFIG.LOGO_URL;
+  } else { orn.innerHTML=mono; }
+})();
+document.title = CONFIG.TIENDA_NOMBRE + ' — Catálogo';
+
+/* Redes sociales */
 const ICONS = {
-  instagram:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>',
-  facebook:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M14 9h3V5h-3c-2.2 0-4 1.8-4 4v2H7v4h3v6h4v-6h3l1-4h-4V9c0-.6.4-1 1-1z"/></svg>',
-  tiktok:'<svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M16 3c.3 2.2 1.6 3.9 3.8 4.2v2.9c-1.4.1-2.7-.3-3.9-1v6.1c0 3.4-2.8 6.1-6.2 5.7-2.7-.3-4.8-2.6-4.8-5.3 0-3.3 3-5.9 6.3-5.2v3c-.5-.2-1-.2-1.5-.1-1.2.2-2 1.3-1.8 2.5.2 1.1 1.2 1.9 2.3 1.8 1.2-.1 2-.9 2-2.1V3z"/></svg>'
+  instagram:'<svg viewBox="0 0 24 24"><path d="M12 2c2.7 0 3 0 4.1.1 1 0 1.6.2 2 .4.5.2.9.5 1.3.9.4.4.7.8.9 1.3.2.4.3 1 .4 2C21 7.8 21 8.1 21 12s0 4.2-.1 5.3c0 1-.2 1.6-.4 2-.2.5-.5.9-.9 1.3-.4.4-.8.7-1.3.9-.4.2-1 .3-2 .4-1.1 0-1.4.1-4.3.1s-4.2 0-5.3-.1c-1 0-1.6-.2-2-.4-.5-.2-.9-.5-1.3-.9-.4-.4-.7-.8-.9-1.3-.2-.4-.3-1-.4-2C3 16.2 3 15.9 3 12s0-4.2.1-5.3c0-1 .2-1.6.4-2 .2-.5.5-.9.9-1.3.4-.4.8-.7 1.3-.9.4-.2 1-.3 2-.4C8.8 2 9.1 2 12 2zm0 5a5 5 0 100 10 5 5 0 000-10zm0 8.2a3.2 3.2 0 110-6.4 3.2 3.2 0 010 6.4zM17.8 5.9a1.2 1.2 0 100 2.4 1.2 1.2 0 000-2.4z"/></svg>',
+  facebook:'<svg viewBox="0 0 24 24"><path d="M22 12a10 10 0 10-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.7l-.4 2.9h-2.3v7A10 10 0 0022 12z"/></svg>',
+  tiktok:'<svg viewBox="0 0 24 24"><path d="M16 3c.3 2.1 1.5 3.4 3.6 3.6v2.5c-1.2.1-2.3-.2-3.6-.9v6.1c0 3.8-2.8 5.9-5.7 5.6-2.9-.3-4.5-2.6-4.3-5.1.2-2.6 2.4-4.3 5-4v2.6c-.4-.1-.8-.2-1.2-.1-1 .1-1.7.9-1.6 2 .1 1 .9 1.7 2 1.6 1.1-.1 1.6-1 1.6-2V3H16z"/></svg>',
 };
-function socialHTML(){
-  const r=CONFIG.REDES||{};
-  return Object.entries({instagram:r.instagram,facebook:r.facebook,tiktok:r.tiktok})
-    .filter(([k,v])=>v).map(([k,v])=>`<a href="${v}" target="_blank" rel="noopener" aria-label="${k}">${ICONS[k]}</a>`).join('');
-}
-['logoHeader','logoHero','logoFoot'].forEach(id=>document.getElementById(id).src=LOGO);
-document.getElementById('brand').textContent=CONFIG.TIENDA_NOMBRE;
-document.getElementById('heroTitle').textContent=CONFIG.TIENDA_NOMBRE;
-document.getElementById('footName').textContent=CONFIG.TIENDA_NOMBRE;
-document.getElementById('heroTag').textContent=CONFIG.TIENDA_TAGLINE;
-document.getElementById('socialsHero').innerHTML=socialHTML();
-document.getElementById('socialsFoot').innerHTML=socialHTML();
-document.title=CONFIG.TIENDA_NOMBRE+" · Catálogo";
+(function(){
+  const r = CONFIG.REDES||{};
+  const html = Object.entries(r).filter(([k,v])=>v).map(([k,v])=>`<a href="${v}" target="_blank" rel="noopener" aria-label="${k}">${ICONS[k]||''}</a>`).join('');
+  $('#social').innerHTML = html;
+})();
 
-let PRODUCTS=[], PROMOS=[], cart=JSON.parse(localStorage.getItem('cart_'+CONFIG.TIENDA_NOMBRE)||'[]');
-let fCat='todos', fGen='todos', fMom='todos', q='';
-let PRICE_MODE='min';
-const MAYOR_MIN = Number(CONFIG.MAYOR_MIN)||3;
-const ESCALA_MINS_C=[6,10,12,20,50,100];
-/* ===== MOTOR DE PRECIOS (compartido catálogo/POS) ===== */
-function _promosVigentes(PROMOS){
-  const hoy=new Date().toISOString().slice(0,10);
-  return (PROMOS||[]).filter(p=>p.activo && (!p.desde||hoy>=p.desde) && (!p.hasta||hoy<=p.hasta));
-}
-function _firstTamano(prod){ const a=(prod.presentaciones||[]).filter(x=>x&&Number(x.precio)>0); return a[0]?a[0].tamano:'Sellado'; }
-function _unitPrice(prod,tamano,ctx){
-  const pres=(prod.presentaciones||[]).find(x=>x.tamano===tamano)||{};
-  const u0=Number(pres.precio)||0; let best=u0, src='';
-  const may=Number(pres.precio_may)||0;
-  if(ctx.totalUnits>=ctx.MAYOR_MIN && may>0 && may<best){ best=may; src='Precio por mayor'; }
-  const esc=(pres.escala||[]);
-  (ctx.escalas||[]).forEach(pr=>{
-    const c=pr.config||{}; let rel, applies=true;
-    if(c.alcance==='producto'){ applies=(c.productos||[]).includes(prod.nombre); rel=ctx.qtyByName[prod.nombre]||0; }
-    else rel=ctx.totalUnits;
-    if(!applies) return;
-    const niveles=(c.niveles&&c.niveles.length)?c.niveles.map(Number):null;
-    esc.forEach(t=>{ const m=Number(t.min), p=Number(t.precio)||0; if(p<=0) return; if(niveles&&!niveles.includes(m)) return; if(rel>=m && p<best){ best=p; src='x'+m; } });
+/* ================= Estado ================= */
+let PRODUCTS=[], NOTAS_BY_PROD={}, PROMOS=[], PROD_BY_ID={};
+let COMBOS=[], currentView='catalogo';
+let PREORDENES=[], CONSOLIDADOS=[];
+let GIFT_STATUS=[];
+let filterCat='Todos', filterGen='Todos', query='';
+let CART = JSON.parse(localStorage.getItem('cart_'+CONFIG.TIENDA_NOMBRE) || '[]');
+let payMethod='coordinar';
+let cliente={nombre:'',tel:'',dir:''};
+const MAYOR_MIN = Number(CONFIG.MAYOR_MIN)||0;   // 0 = no hay precio por mayor
+
+/* --- Precio por mayor (minorista/mayorista automático por cantidad) --- */
+function precioMayDe(x){ return Number(x&&x.precio_may)||0; }
+function hayMayorEnCarrito(){ return MAYOR_MIN>0 && CART.some(i=>precioMayDe(i)>0); }
+function unidadesCarrito(){ return CART.reduce((s,i)=>s+i.qty,0); }
+function mayorActivo(){ return MAYOR_MIN>0 && unidadesCarrito()>=MAYOR_MIN; }
+/* Base efectiva de un ítem según haya o no precio por mayor activo */
+function baseItem(i){ const may=precioMayDe(i); return (mayorActivo()&&may>0)?may:Number(i.precio); }
+/* Carrito con los precios base ya ajustados a mayorista, para el motor de promos */
+function pricedCart(){ return CART.map(i=>({ ...i, precio: baseItem(i) })); }
+
+/* Helpers de datos */
+function presActivas(p){ return (p.presentaciones||[]).filter(x=>x&&x.activo!==false&&Number(x.precio)>0).sort((a,b)=>Number(a.precio)-Number(b.precio)); }
+function imgsOf(p){ const a=Array.isArray(p.imagenes)?p.imagenes.filter(Boolean):[]; return a.length?a:(p.imagen_url?[p.imagen_url]:[]); }
+function mlLabel(ml){ return String(ml).toLowerCase()==='sellado' ? 'Sellado' : ml+'ml'; }
+function ofertaPct(x){ const a=Number(x.antes), pr=Number(x.precio); return (a&&pr&&a>pr)?Math.round((a-pr)/a*100):0; }
+function precioEfectivo(p, x){ const r=window.PROMOS_ENGINE.precioUnit(p, x.ml, Number(x.precio), PROMOS); return r.precio; }
+function precioDesde(p){ const v=presActivas(p).map(x=>precioEfectivo(p,x)); return v.length?Math.min(...v):null; }
+function maxOfertaCard(p){
+  let m=0;
+  presActivas(p).forEach(x=>{
+    const base=Number(x.precio), ef=precioEfectivo(p,x), antes=Number(x.antes)||base;
+    const ref=Math.max(antes, base);
+    if(ref>ef) m=Math.max(m, Math.round((ref-ef)/ref*100));
   });
-  return {u0,best:Math.round(best*100)/100,src};
+  return m;
 }
-function priceEngine(basket,PRODUCTS,PROMOS,MAYOR_MIN){
-  const vig=_promosVigentes(PROMOS);
-  const escalas=vig.filter(p=>p.tipo==='cantidad');
-  const combos=vig.filter(p=>p.tipo==='combo');
-  const totalUnits=basket.reduce((s,i)=>s+Number(i.qty||0),0);
-  const qtyByName={}; basket.forEach(i=>{ qtyByName[i.nombre]=(qtyByName[i.nombre]||0)+Number(i.qty||0); });
-  const ctx={totalUnits,MAYOR_MIN,escalas,qtyByName};
-  const lines=basket.map(it=>{
-    const prod=PRODUCTS.find(x=>(it.id&&x.id===it.id)||x.nombre===it.nombre)||{nombre:it.nombre,presentaciones:[]};
-    const up=_unitPrice(prod,it.tamano,ctx);
-    return {...it,unit:up.best,unitOrig:up.u0,promo:(up.best<up.u0?up.src:''),lineTotal:Math.round(up.best*Number(it.qty||0)*100)/100};
-  });
-  const comboDisc=[];
-  combos.forEach(pr=>{
-    const c=pr.config||{}, L=c.productos||[], T=Number(c.precio)||0;
-    if(L.length<2||T<=0) return;
-    let packs=Infinity; L.forEach(n=>{ packs=Math.min(packs,qtyByName[n]||0); });
-    if(!isFinite(packs)) packs=0;
-    if(packs>=1){
-      let normal=0; L.forEach(n=>{ const p2=PRODUCTS.find(x=>x.nombre===n); if(p2) normal+=_unitPrice(p2,_firstTamano(p2),ctx).best; });
-      const per=normal-T;
-      if(per>0) comboDisc.push({nombre:pr.nombre,packs,monto:Math.round(per*packs*100)/100});
-    }
-  });
-  const subtotal=Math.round(lines.reduce((s,l)=>s+l.lineTotal,0)*100)/100;
-  const totalCombo=Math.round(comboDisc.reduce((s,c)=>s+c.monto,0)*100)/100;
-  return {lines,comboDisc,subtotal,total:Math.max(0,Math.round((subtotal-totalCombo)*100)/100),totalUnits,mayor:totalUnits>=MAYOR_MIN,escalas,combos,qtyByName};
+function catLabel(c){ return c==='Árabe'?'Perfume Árabe':(c||''); }
+/* --- Stock --- */
+function stockDe(p){ return (p.stock===null||p.stock===undefined||p.stock==='')?null:Number(p.stock); }
+function agotado(p){ const s=stockDe(p); return s!=null && s<=0; }
+function qtyEnCarrito(pid){ return CART.filter(i=>i.id===pid).reduce((s,i)=>s+i.qty,0); }
+function stockLine(p){ const s=stockDe(p); if(s==null) return '';
+  const low=CONFIG.STOCK_BAJO||5;
+  if(s<=0) return '<span class="stk out">Agotado</span>';
+  if(s<=low) return `<span class="stk low">¡Últimas ${s} unidades!</span>`;
+  return `<span class="stk ok">${s} disponibles</span>`;
 }
 
-function stockOf(pr){ const s=pr.stock; return (s===null||s===undefined||s==='')?Infinity:Number(s); }
-const STOCK_BAJO = Number(CONFIG.STOCK_BAJO)||5;
-function prodStock(p){ const a=presActivas(p); const pr=a[0]; return pr?stockOf(pr):Infinity; }
-function stockKey(p){ const st=prodStock(p); if(st<=0) return 9e9; if(!isFinite(st)) return 1e6; return st; }
-function modalStock(p){ const st=prodStock(p); if(!isFinite(st)) return ''; if(st<=0) return '<div class="m-stock out">Agotado</div>'; if(st<=STOCK_BAJO) return `<div class="m-stock low">¡Casi agotado! Quedan ${st}</div>`; return `<div class="m-stock">${st} disponibles</div>`; }
-function baseOf(pr){ const may=Number(pr.precio_may)||0; return (PRICE_MODE==='may'&&may>0)?may:Number(pr.precio); }
-const noimg='<div class="noimg"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2h6l1 3h-8zM7 5h10v3H7zM8 8h8l1 12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1z"/></svg></div>';
-
-function presActivas(p){
-  return (p.presentaciones||[]).filter(x=>x&&x.activo&&Number(x.precio)>0).sort((a,b)=>Number(a.precio)-Number(b.precio));
-}
-
-/* ---------- MOTOR DE PROMOCIONES ---------- */
-function promosActivas(){
-  const hoy=new Date().toISOString().slice(0,10);
-  return PROMOS.filter(p=>p.activo && (!p.desde||hoy>=p.desde) && (!p.hasta||hoy<=p.hasta));
-}
-function tallaOk(cfg,tamano){ return !cfg.tallas||!cfg.tallas.length||cfg.tallas.includes(tamano); }
-// precio por unidad aplicando promos de tipo "producto" y "general" (toma el mejor descuento)
-function precioUnit(prod,tamano,base){
-  let mejor=base, promo=null;
-  promosActivas().forEach(pr=>{
-    const c=pr.config||{}; let pct=0, ok=false;
-    if(pr.tipo==='producto'){ ok=(c.productos||[]).includes(prod.nombre)&&tallaOk(c,tamano); pct=c.pct||0; }
-    else if(pr.tipo==='general'){ ok=(c.alcance==='todo'||(c.alcance==='categoria'&&prod.categoria===c.categoria)); pct=c.pct||0; }
-    if(ok&&pct>0){ const np=base*(1-pct/100); if(np<mejor){ mejor=np; promo=pr.nombre; } }
-  });
-  return {precio:Math.round(mejor*100)/100, original:base, promo};
-}
-// lista de presentaciones activas con su precio efectivo (para catálogo/modal)
-function effList(p){ return presActivas(p).map(pr=>({...pr, ...precioUnit(p,pr.tamano,baseOf(pr)), stk:stockOf(pr)})); }
-// cálculo del carrito con promos de cantidad y combo
-function computeCart(){ return priceEngine(cart,PRODUCTS,PROMOS,MAYOR_MIN); }
-
+/* ================= Carga ================= */
 async function load(){
-  setState('<div class="spinner"></div><span class="serif">Cargando catálogo…</span>');
-  const { data, error } = await sb.from('productos').select('*');
-  if(error){ setState('<span class="serif">No se pudo cargar</span>Revisa las credenciales en config.js.<br><small style="opacity:.7">'+error.message+'</small>'); return; }
-  PRODUCTS=(data||[]).filter(p=>p.visible!==false && presActivas(p).length>0);
-  const rp=await sb.from('promociones').select('*'); PROMOS=rp.error?[]:(rp.data||[]);
-  renderLadderInfo();
-  setState(''); buildFilters(); render();
+  const { data, error } = await sb.from('productos').select('*').eq('visible', true).order('orden').order('created_at');
+  if(error){ $('#grid').innerHTML = `<div class="state">No se pudo cargar el catálogo.<br><small style="color:var(--muted-2)">${esc(error.message)}</small><br><br>Revisa tus datos en config.js</div>`; return; }
+  PRODUCTS = (data||[]).filter(p=>presActivas(p).length>0);
+  PROD_BY_ID = {}; PRODUCTS.forEach(p=>PROD_BY_ID[p.id]=p);
+
+  const ids = PRODUCTS.map(p=>p.id);
+  if(ids.length){
+    const { data: rel } = await sb.from('producto_notas').select('producto_id, notas(nombre,imagen_url)').in('producto_id', ids);
+    (rel||[]).forEach(r => { if(r.notas) (NOTAS_BY_PROD[r.producto_id] ||= []).push(r.notas); });
+  }
+  const rp = await sb.from('promociones').select('*');
+  PROMOS = rp.error ? [] : (rp.data||[]);
+
+  const rc = await sb.from('combos').select('*').eq('visible', true).order('orden').order('created_at');
+  COMBOS = rc.error ? [] : (rc.data||[]).filter(c=>tallasActivas(c).length>0);
+
+  // NUEVO: Preorden y Consolidado (activos)
+  const rpre = await sb.from('preordenes').select('*').eq('activo', true).order('orden').order('created_at');
+  PREORDENES = rpre.error ? [] : (rpre.data||[]);
+  const rcon = await sb.from('consolidados').select('*').eq('activo', true).order('orden').order('created_at');
+  CONSOLIDADOS = rcon.error ? [] : (rcon.data||[]);
+
+  const ra = await sb.from('ajustes').select('*').eq('id','principal').maybeSingle();
+  if(!ra.error && ra.data && ra.data.hero_sub) $('#heroSub').textContent = ra.data.hero_sub;
+
+  renderFilters(); render(); renderCombos(); renderPre(); renderCon();
+
+  // Mostrar/ocultar pestañas según lo que haya cargado
+  const anyTab = COMBOS.length || PREORDENES.length || CONSOLIDADOS.length;
+  const vt=$('#viewtabs'); if(vt) vt.style.display = anyTab ? 'flex' : 'none';
+  const tp=$('#tabPromos'); if(tp) tp.style.display = COMBOS.length ? 'inline-flex' : 'none';
+  const tpr=$('#tabPre'); if(tpr) tpr.style.display = PREORDENES.length ? 'inline-flex' : 'none';
+  const tc=$('#tabCon'); if(tc) tc.style.display = CONSOLIDADOS.length ? 'inline-flex' : 'none';
+  const sbBar=$('#statusBar'); if(sbBar) sbBar.style.display = (PREORDENES.length||CONSOLIDADOS.length) ? 'flex' : 'none';
+
+  // Modo diagnóstico: abre el catálogo con  ?debug  al final de la URL
+  if(/[?&]debug/i.test(location.search)){
+    const reg = PROMOS.filter(p=>p.tipo==='regalo');
+    let msg = 'DIAGNÓSTICO Aromelle\n\n'
+      + '✓ Versión NUEVA cargada (con regalos y combos)\n'
+      + 'Promociones cargadas: '+PROMOS.length+'\n'
+      + 'Promos de tipo regalo: '+reg.length+'\n'
+      + 'Combos: '+COMBOS.length+'\n';
+    reg.forEach((p,i)=>{ const c=p.config||{};
+      msg += '\nRegalo #'+(i+1)+': "'+p.nombre+'"'
+        + '\n  activa: '+(p.activo?'sí':'NO')
+        + '\n  N (min): '+(c.min||'—')
+        + '\n  tallas que cuentan: '+((c.mls&&c.mls.length)?c.mls.join(', '):'todas')
+        + '\n  talla del regalo: '+(c.regalo_ml||'—')
+        + '\n  perfumes de regalo: '+((c.regalo_productos&&c.regalo_productos.length)||0);
+    });
+    if(!reg.length) msg += '\n⚠ No hay ninguna promo de tipo "regalo" cargada.';
+    alert(msg);
+  }
 }
 
-function buildFilters(){
-  const cats=[...new Set(PRODUCTS.map(p=>p.categoria).filter(Boolean))];
-  const gens=[...new Set(PRODUCTS.map(p=>p.genero).filter(Boolean))];
-  const cf=document.getElementById('catFilters'); cf.innerHTML='';
-  cf.appendChild(makeChip('Todos','todos',()=>{fCat='todos';render()}));
-  cats.forEach(c=>cf.appendChild(makeChip(c,c,()=>{fCat=c;render()})));
-  const gf=document.getElementById('genFilters'); gf.querySelectorAll('.chip').forEach(e=>e.remove());
-  const sep=gf.querySelector('.sep'); const sort=gf.querySelector('.sort');
-  if(gens.length) sep.style.display='block';
-  gens.forEach(g=>{ const c=makeChip(g,g,()=>{fGen=(fGen===g?'todos':g);render()},'gen'); gf.insertBefore(c,sort); });
-}
-function makeChip(label,val,onClick,dim){ const b=document.createElement('button'); b.className='chip'; b.textContent=label; b.dataset.v=val; if(dim) b.dataset.dim=dim; b.onclick=()=>{onClick();syncChips();}; return b; }
-function syncChips(){
-  document.querySelectorAll('#catFilters .chip').forEach(c=>c.classList.toggle('on',c.dataset.v===fCat));
-  document.querySelectorAll('#genFilters .chip').forEach(c=>{
-    const on=c.dataset.dim==='mom'?(c.dataset.v===fMom):(c.dataset.v===fGen);
-    c.classList.toggle('on',on);
-  });
+/* ================= Combos / Promociones ================= */
+function tallasActivas(c){ return (c.tallas||[]).filter(t=>t&&t.activo!==false&&Number(t.precio)>0).sort((a,b)=>Number(a.precio)-Number(b.precio)); }
+function comboDesde(c){ const t=tallasActivas(c); return t.length?Number(t[0].precio):null; }
+function comboAntesDesde(c){ const t=tallasActivas(c); if(!t.length) return null; const a=Number(t[0].antes); return (a&&a>Number(t[0].precio))?a:null; }
+
+function setView(v){
+  currentView=v;
+  document.querySelectorAll('#viewtabs .vtab').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
+  $('#filters').style.display     = v==='catalogo' ? 'flex' : 'none';
+  $('#grid').style.display        = v==='catalogo' ? 'grid' : 'none';
+  $('#combosGrid').style.display  = v==='promos'   ? 'grid' : 'none';
+  $('#preGrid').style.display     = v==='preorden' ? 'grid' : 'none';
+  $('#conGrid').style.display     = v==='consolidado' ? 'grid' : 'none';
+  if(v==='promos') renderCombos();
+  else if(v==='preorden') renderPre();
+  else if(v==='consolidado') renderCon();
+  else render();
 }
 
-function filtered(){
-  let list=PRODUCTS.filter(p=>{
-    const okCat=fCat==='todos'||p.categoria===fCat;
-    const okGen=fGen==='todos'||p.genero===fGen;
-    const okMom=fMom==='todos'||p.momento===fMom;
-    const okQ=!q||(p.nombre+' '+(p.marca||'')+' '+(p.descripcion||'')).toLowerCase().includes(q);
-    return okCat&&okGen&&okMom&&okQ;
-  });
-  const s=document.getElementById('sort').value;
-  const desde=p=>{ const a=presActivas(p); return a.length?Number(a[0].precio):0; };
-  list.sort((a,b)=>{
-    if(s==='precio-asc') return desde(a)-desde(b);
-    if(s==='precio-desc') return desde(b)-desde(a);
-    if(s==='nombre') return a.nombre.localeCompare(b.nombre);
-    return stockKey(a)-stockKey(b)||(b.destacado?1:0)-(a.destacado?1:0)||a.nombre.localeCompare(b.nombre);
-  });
-  return list;
-}
-
-function render(){
-  syncChips();
-  const list=filtered(); const grid=document.getElementById('grid');
-  document.getElementById('countLine').textContent=list.length+(list.length===1?' producto':' productos');
-  if(!list.length){ grid.innerHTML=''; setState('<span class="serif">Sin resultados</span>Prueba con otra búsqueda o filtro.'); return; }
-  setState('');
-  grid.innerHTML=list.map(p=>{
-    const eff=effList(p); const desde=eff.reduce((m,x)=>x.precio<m.precio?x:m,eff[0]); const varias=eff.length>1;
-    const hasPromo=eff.some(x=>x.precio<x.original); const promoName=(eff.find(x=>x.promo)||{}).promo;
-    const allOut=eff.every(x=>x.stk<=0); const st=prodStock(p); const low=isFinite(st)&&st>0&&st<=STOCK_BAJO;
-    const img=p.imagen_url?`<img src="${p.imagen_url}" alt="${esc(p.nombre)}" loading="lazy">`:noimg;
-    return `<article class="card" onclick="openModal('${p.id}')">
-      <div class="thumb">
-        ${eff.length>1?`<span class="badge">${eff.length} tallas</span>`:''}
-        ${allOut?'<span class="promo-flag" style="background:var(--err)">Agotado</span>':(low?'<span class="promo-flag" style="background:#c9862b">¡Casi agotado!</span>':(hasPromo?`<span class="promo-flag">${esc(promoName||'Oferta')}</span>`:(p.destacado?'<span class="fav">Destacado</span>':'')))}
-        ${img}
-      </div>
-      <div class="card-body">
-        <span class="eyebrow">${esc(p.marca||'')}</span>
-        <h3>${esc(p.nombre)}</h3>
-        <p class="desc">${fmtLines(p.descripcion)[0]||''}</p>
-        <div class="meta">
-          ${p.categoria?`<span class="tag">${esc(p.categoria)}</span>`:''}
-          ${p.genero?`<span class="tag">${esc(p.genero)}</span>`:''}
-          ${p.momento?`<span class="tag">${esc(p.momento)}</span>`:''}
+function renderCombos(){
+  const list = COMBOS.filter(c => !query || (c.nombre||'').toLowerCase().includes(query));
+  if(!list.length){ $('#combosGrid').innerHTML = `<div class="state">No hay promociones disponibles por ahora.</div>`; return; }
+  $('#combosGrid').innerHTML = list.map(c => {
+    const desde = comboDesde(c), antes = comboAntesDesde(c);
+    const main = imgsOf(c)[0];
+    return `<button class="card" data-combo="${c.id}">
+      <span class="badge-oferta">Oferta</span>
+      ${c.destacado ? '<span class="badge-dest" style="left:auto;right:11px">Destacado</span>' : ''}
+      <div class="imgwrap">${main ? `<img src="${esc(main)}" alt="${esc(c.nombre)}" loading="lazy">` : `<span class="ph">${esc((c.nombre||'?')[0])}</span>`}</div>
+      <div class="body">
+        <span class="marca">Promoción</span>
+        <span class="nombre">${esc(c.nombre)}</span>
+        <div class="foot">
+          <span class="precio">${desde!=null?`<small>Desde</small><b>${antes?`<span class="antes">${fmt(antes)}</span>`:''}${fmt(desde)}</b>`:'<small>Precio</small><b>Consultar</b>'}</span>
+          <span class="ver">→</span>
         </div>
-        ${!isFinite(st)||st<=0?'':(low?`<div class="stk-line low">¡Últimas ${st} unidades!</div>`:`<div class="stk-line">${st} disponibles</div>`)}
-        <div class="row">
-          <div><span class="from-lbl">${varias?'Desde':'&nbsp;'}</span><div class="price">${hasPromo?`<span class="price-old">${money(desde.original)}</span>`:''}${money(desde.precio)}</div></div>
-          <span class="view">Ver más →</span>
+      </div>
+    </button>`;
+  }).join('');
+  document.querySelectorAll('#combosGrid .card').forEach(c => c.onclick = () => openCombo(c.dataset.combo));
+}
+
+/* ============================================================
+   NUEVO — PREORDEN  (perfumes en preventa con cupo)
+   ============================================================ */
+const COMP_BUCKET = CONFIG.BUCKET_COMPROBANTES || 'comprobantes';
+function cupoRestante(p){ if(p.cupo==null||p.cupo==='') return null; return Math.max(0, Number(p.cupo)-Number(p.reservado||0)); }
+
+function renderPre(){
+  const list = PREORDENES.filter(p => !query || ((p.nombre||'')+' '+(p.marca||'')).toLowerCase().includes(query));
+  if(!list.length){ $('#preGrid').innerHTML = `<div class="state">No hay perfumes en preventa por ahora.</div>`; return; }
+  $('#preGrid').innerHTML = list.map(p => {
+    const main = imgsOf(p)[0]; const rest = cupoRestante(p);
+    const full = rest!=null && rest<=0;
+    return `<button class="card ${full?'agotado':''}" data-pre="${p.id}">
+      <span class="badge-pre">Preventa ✈️</span>
+      <div class="imgwrap">${main ? `<img src="${esc(main)}" alt="${esc(p.nombre)}" loading="lazy">` : `<span class="ph">${esc((p.marca||p.nombre||'?')[0])}</span>`}</div>
+      <div class="body">
+        <span class="marca">${esc(p.marca||'Preventa')}</span>
+        <span class="nombre">${esc(p.nombre)}</span>
+        ${rest!=null?`<span class="cupo-line ${full?'full':'left'}">${full?'Cupo lleno':'Quedan '+rest+' de '+p.cupo}</span>`:''}
+        ${p.fecha_estimada?`<span class="stk ok">Llega aprox: ${esc(p.fecha_estimada)}</span>`:''}
+        <div class="foot">
+          <span class="precio">${p.precio!=null&&p.precio!==''?`<small>Precio</small><b>${fmt(p.precio)}</b>`:'<small>Precio</small><b>Consultar</b>'}</span>
+          <span class="ver">→</span>
         </div>
       </div>
-    </article>`;
+    </button>`;
   }).join('');
+  document.querySelectorAll('#preGrid .card').forEach(c=>c.onclick=()=>openPre(c.dataset.pre));
 }
-function setState(html){ document.getElementById('stateBox').innerHTML=html?`<div class="state">${html}</div>`:''; }
-function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-// separa la descripción en líneas: por saltos de línea o por " - " (guion entre espacios)
-function fmtLines(s){
-  return esc(s||'')
-    .split(/\r?\n|\s+[-–—]\s+/)
-    .map(x=>x.replace(/^[-–—]\s*/,'').trim())
-    .filter(Boolean);
-}
-function fmtDesc(s){ return fmtLines(s).join('<br>'); }
 
-let modalProd=null, modalSel=0, modalQty=1, modalMaxStock=Infinity;
-function openModal(id){
-  const p=PRODUCTS.find(x=>x.id===id); if(!p) return;
-  modalProd=p; modalSel=0;
-  const eff=effList(p);
-  modalSel=eff.findIndex(x=>x.stk>0); if(modalSel<0) modalSel=0;
-  const img=p.imagen_url?`<img src="${p.imagen_url}" alt="${esc(p.nombre)}">`:noimg;
-  const tags=[p.categoria,p.genero,p.momento].filter(Boolean).map(t=>`<span class="tag">${esc(t)}</span>`).join('');
-  const sizes=eff.map((pr,i)=>{
-    const out=pr.stk<=0;
-    const pz=out?'<span class="old">Agotado</span>':`${pr.precio<pr.original?`<span class="old">${money(pr.original)}</span>`:''}${money(pr.precio)}`;
-    return `<button class="size ${i===modalSel?'on':''} ${out?'out':''}" data-i="${i}" onclick="selectSize(${i})">${esc(pr.tamano)} — ${pz}</button>`;
+function openPre(id){
+  const p = PREORDENES.find(x=>x.id===id); if(!p) return;
+  const imgs=imgsOf(p); const mainImg=imgs[0];
+  const rest=cupoRestante(p); const max = rest!=null?rest : 99;
+  let qty = max>0?1:0; let files=[];
+  const precio = Number(p.precio)||0;
+
+  function draw(){
+    $('#sheet').innerHTML = `
+      <div class="hd">
+        <button class="close" id="closeSheet" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+        ${mainImg ? `<img src="${esc(mainImg)}" alt="${esc(p.nombre)}">` : `<div class="ph" style="font-size:4rem">${esc((p.marca||'?')[0])}</div>`}
+      </div>
+      <div class="bd">
+        <div class="marca">Preventa ✈️</div>
+        <h2>${esc(p.nombre)}</h2>
+        <div class="genero">${esc(p.marca||'')}${p.descripcion?' · '+esc(p.descripcion):''}</div>
+        ${p.fecha_estimada?`<div><span class="stock-modal ok">Llegada aprox: ${esc(p.fecha_estimada)}</span></div>`:''}
+        ${rest!=null?`<div><span class="stock-modal ${rest<=0?'out':'low'}">${rest<=0?'Cupo lleno':('Quedan '+rest+' cupos de '+p.cupo)}</span></div>`:''}
+
+        <div class="section-t">¿Cómo funciona?</div>
+        <div class="genero" style="line-height:1.6">Reservas tu perfume, adjuntas tu comprobante de pago y nosotros confirmamos tu preorden. Podrás consultar el estado con tu código.</div>
+
+        ${max>0?`
+        <div class="section-t">Cantidad</div>
+        <div class="qty-pick"><div class="stepper"><button id="qMinus">−</button><span id="qVal">${qty}</span><button id="qPlus">+</button></div><span style="color:var(--muted);font-size:.85rem" id="qTot">${fmt(precio*qty)}</span></div>
+
+        <div class="section-t">Tu comprobante de pago</div>
+        <div class="pay-up">
+          <label>Sube la foto de tu pago / depósito (obligatorio)</label>
+          <input id="preFiles" type="file" accept="image/*" multiple>
+          <div class="pay-thumbs" id="preThumbs"></div>
+        </div>
+
+        <div class="section-t">Tus datos</div>
+        <div class="miniform">
+          <input id="preNombre" placeholder="Nombre completo *" value="${esc(cliente.nombre||'')}">
+          <input id="preTel" placeholder="Teléfono / WhatsApp *" inputmode="tel" value="${esc(cliente.tel||'')}">
+          <input id="preDir" placeholder="Dirección o referencia (opcional)" value="${esc(cliente.dir||'')}">
+          <textarea id="preNota" rows="2" placeholder="Nota (opcional)"></textarea>
+        </div>
+
+        <button class="add-cta" id="preSend">Reservar mi preorden · ${fmt(precio*qty)}</button>
+        `:`<div class="section-t">Preventa cerrada</div><div class="genero">Se agotaron los cupos de este perfume.</div>`}
+      </div>`;
+
+    $('#closeSheet').onclick = closeProduct;
+    if(max>0){
+      const refresh=()=>{ $('#qVal').textContent=qty; $('#qTot').textContent=fmt(precio*qty); $('#preSend').textContent=`Reservar mi preorden · ${fmt(precio*qty)}`; };
+      $('#qMinus').onclick=()=>{ qty=Math.max(1,qty-1); refresh(); };
+      $('#qPlus').onclick =()=>{ qty=Math.min(max,qty+1); if(qty===max) toast('Es el máximo de cupos disponibles'); refresh(); };
+      function drawThumbs(){ $('#preThumbs').innerHTML=files.map((u,i)=>`<div class="pt"><img src="${esc(u.url)}"><button data-rm="${i}">×</button></div>`).join('');
+        $('#preThumbs').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ files.splice(+b.dataset.rm,1); drawThumbs(); }); }
+      $('#preFiles').onchange = async e => { const fs=[...e.target.files]; if(!fs.length)return; toast('Subiendo comprobante...');
+        for(const f of fs){ const u=await subirComprobante(f); if(u) files.push({url:u}); } drawThumbs(); toast('Comprobante listo'); };
+      const cmap={preNombre:'nombre',preTel:'tel',preDir:'dir'}; Object.keys(cmap).forEach(idc=>{ const el=document.getElementById(idc); if(el) el.oninput=()=>cliente[cmap[idc]]=el.value; });
+      $('#preSend').onclick = enviarPre;
+    }
+  }
+
+  async function enviarPre(){
+    const nombre=($('#preNombre').value||'').trim(), tel=($('#preTel').value||'').trim();
+    const dir=($('#preDir').value||'').trim(), nota=($('#preNota').value||'').trim();
+    if(!nombre||!tel){ toast('Pon tu nombre y teléfono'); return; }
+    if(!files.length){ toast('Sube la foto de tu comprobante de pago'); return; }
+    const btn=$('#preSend'); btn.disabled=true; btn.textContent='Enviando...';
+    const items=[{ preorden_id:p.id, nombre:p.nombre, qty, precio }];
+    const { data, error } = await sb.rpc('crear_preorden', {
+      p_items:items, p_total:precio*qty, p_nombre:nombre, p_tel:tel, p_dir:dir||null, p_nota:nota||null,
+      p_comprobantes:files.map(f=>f.url)
+    });
+    if(error){ btn.disabled=false; btn.textContent='Reservar mi preorden'; toast(error.message&&error.message.includes('SIN_CUPO')?'Ya no hay cupos suficientes':'No se pudo enviar. Intenta de nuevo'); return; }
+    guardarCodigo(data);
+    okScreen('¡Preorden recibida!', data, 'Tu preorden quedó en revisión. Cuando confirmemos tu pago te avisaremos por WhatsApp. Guarda tu código para consultar el estado cuando quieras.');
+    // Avisar también por WhatsApp (opcional para el cliente)
+    const msg=`Hola ${enc(CONFIG.TIENDA_NOMBRE)}! Hice una *PREORDEN*:%0A• ${enc(p.nombre)} x${qty} = ${enc(fmt(precio*qty))}%0ACódigo: ${enc(data)}%0A%0A👤 ${enc(nombre)} · ${enc(tel)}`;
+    setTimeout(()=>{ if(confirm('¿Enviar también tu preorden por WhatsApp para confirmar más rápido?')) window.open(`https://wa.me/${CONFIG.WHATSAPP}?text=${msg}`,'_blank'); }, 300);
+    load();
+  }
+
+  draw();
+  $('#overlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+
+/* ============================================================
+   NUEVO — CONSOLIDADO  (compra grupal: más piden, más barato)
+   ============================================================ */
+function escalasOrden(c){ return (Array.isArray(c.escalas)?c.escalas:[]).filter(e=>e&&Number(e.precio)>0).map(e=>({min:Number(e.min)||1,precio:Number(e.precio)})).sort((a,b)=>a.min-b.min); }
+function precioEnEscala(c, unidades){ const es=escalasOrden(c); let pr=null; es.forEach(e=>{ if(unidades>=e.min) pr=e.precio; }); if(pr==null&&es.length) pr=es[0].precio; return pr; }
+function proximaEscala(c, unidades){ const es=escalasOrden(c); for(const e of es){ if(unidades<e.min) return {faltan:e.min-unidades, precio:e.precio, min:e.min}; } return null; }
+
+function renderCon(){
+  const list = CONSOLIDADOS.filter(c => !query || ((c.nombre||'')+' '+(c.marca||'')).toLowerCase().includes(query));
+  if(!list.length){ $('#conGrid').innerHTML = `<div class="state">No hay consolidados abiertos por ahora.</div>`; return; }
+  $('#conGrid').innerHTML = list.map(c => {
+    const main=imgsOf(c)[0]; const acum=Number(c.acumulado)||0;
+    const precio=precioEnEscala(c,acum); const nx=proximaEscala(c,acum);
+    return `<button class="card" data-con="${c.id}">
+      <span class="badge-con">Consolidado 🤝</span>
+      <div class="imgwrap">${main ? `<img src="${esc(main)}" alt="${esc(c.nombre)}" loading="lazy">` : `<span class="ph">${esc((c.nombre||'?')[0])}</span>`}</div>
+      <div class="body">
+        <span class="marca">${esc(c.marca||'Compra grupal')}</span>
+        <span class="nombre">${esc(c.nombre)}</span>
+        <span class="stk ok">${acum} pedidos acumulados</span>
+        ${nx?`<span class="escala-mini">Baja a ${fmt(nx.precio)} con ${nx.faltan} más</span>`:'<span class="escala-mini">¡Mejor precio alcanzado! 🎉</span>'}
+        <div class="foot">
+          <span class="precio">${precio!=null?`<small>Precio ahora</small><b>${fmt(precio)}</b>`:'<small>Precio</small><b>Consultar</b>'}</span>
+          <span class="ver">→</span>
+        </div>
+      </div>
+    </button>`;
   }).join('');
-  const p0=eff[modalSel]||eff[0];
-  modalQty=1; modalMaxStock=(p0&&isFinite(p0.stk))?p0.stk:Infinity;
-  document.getElementById('modalBox').innerHTML=`
-    <div class="m-hero">
-      <button class="m-close" onclick="closeModal()">×</button>
-      ${img}
-      ${tags?`<div class="m-tags">${tags}</div>`:''}
-    </div>
-    <div class="m-body">
-      <div class="m-top">
-        <div><div class="m-eyebrow">${esc(p.marca||'')}</div><h2>${esc(p.nombre)}</h2></div>
-        <div class="m-price" id="mPrice">${p0.precio<p0.original?`<span class="price-old">${money(p0.original)}</span>`:''}${money(p0.precio)}${p0.tamano&&p0.tamano!=='Sellado'?`<small>${esc(p0.tamano)}</small>`:''}</div>
+  document.querySelectorAll('#conGrid .card').forEach(c=>c.onclick=()=>openCon(c.dataset.con));
+}
+
+function openCon(id){
+  const c = CONSOLIDADOS.find(x=>x.id===id); if(!c) return;
+  const imgs=imgsOf(c); const mainImg=imgs[0];
+  const acum=Number(c.acumulado)||0; const es=escalasOrden(c);
+  let qty=1; let files=[];
+
+  function precioCon(q){ return precioEnEscala(c, acum+q) ?? (es[0]&&es[0].precio) ?? 0; }
+  function draw(){
+    const q=qty; const precio=precioCon(q); const proj=acum+q;
+    const nx=proximaEscala(c, proj);
+    const meta=Number(c.meta)||0;
+    const progBase = meta>0 ? meta : (es.length?es[es.length-1].min:proj);
+    const pct = Math.min(100, Math.round(proj/Math.max(1,progBase)*100));
+    $('#sheet').innerHTML = `
+      <div class="hd">
+        <button class="close" id="closeSheet" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+        ${mainImg ? `<img src="${esc(mainImg)}" alt="${esc(c.nombre)}">` : `<div class="ph" style="font-size:4rem">${esc((c.nombre||'?')[0])}</div>`}
       </div>
-      ${p.descripcion?`<p class="m-desc">${fmtDesc(p.descripcion)}</p>`:''}
-      ${offerChips(p)}
-      ${modalStock(p)}
-      ${eff.length>1?`<div class="m-sizes-lbl">Elige tu presentación</div><div class="sizes">${sizes}</div>`:''}
-      ${qtyPicker(p0)}
-      <div class="m-actions">
-        <button class="btn-add" onclick="addSelected()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
-          <span id="addBtnLbl">Agregar al pedido</span>
-        </button>
-        <button class="btn-solo" onclick="waSolo()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.2-1.7-.9-2-1-.3-.1-.5-.1-.6.1-.2.3-.7 1-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.6-1.5-.9-2-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3M12 2a10 10 0 0 0-8.6 15l-1.3 4.8 4.9-1.3A10 10 0 1 0 12 2"/></svg>
-          Pedir solo este
-        </button>
-      </div>
+      <div class="bd">
+        <div class="marca">Consolidado 🤝</div>
+        <h2>${esc(c.nombre)}</h2>
+        <div class="genero">${esc(c.marca||'')}${c.descripcion?' · '+esc(c.descripcion):''}</div>
+        ${c.fecha_cierre?`<div><span class="stock-modal low">Cierra: ${esc(c.fecha_cierre)}</span></div>`:''}
+
+        <div class="section-t">¿Cómo funciona?</div>
+        <div class="genero" style="line-height:1.6">Varias personas se unen a un mismo pedido. Mientras más unidades se junten, <b>más barato</b> sale para todos. Únete con tus datos y confirmamos tu cupo.</div>
+
+        <div class="section-t">Precios por cantidad total</div>
+        <div class="escala">${es.map(e=>{ const active=proj>=e.min && (precioEnEscala(c,proj)===e.precio); return `<div class="er ${active?'active':''}"><span class="q">Desde ${e.min} u.${active?'<span class="now">Ahora</span>':''}</span><span class="pp">${fmt(e.precio)} c/u</span></div>`; }).join('')}</div>
+
+        <div class="prog">
+          <div class="lbl"><span>${proj} unidades ${meta>0?`de ${meta}`:''}</span><span>${pct}%</span></div>
+          <div class="bar"><i style="width:${pct}%"></i></div>
+          ${nx?`<div class="next">Con ${nx.faltan} unidad${nx.faltan>1?'es':''} más el precio baja a ${fmt(nx.precio)} c/u</div>`:`<div class="next">¡Mejor precio alcanzado! 🎉</div>`}
+        </div>
+
+        <div class="section-t">¿Cuántas unidades pides?</div>
+        <div class="qty-pick"><div class="stepper"><button id="cMinus">−</button><span id="cVal">${qty}</span><button id="cPlus">+</button></div><span style="color:var(--muted);font-size:.85rem">${fmt(precio)} c/u</span></div>
+
+        <div class="section-t">Comprobante de pago (opcional)</div>
+        <div class="pay-up">
+          <label>Si ya hiciste un adelanto, sube la foto aquí</label>
+          <input id="conFiles" type="file" accept="image/*" multiple>
+          <div class="pay-thumbs" id="conThumbs"></div>
+        </div>
+
+        <div class="section-t">Tus datos</div>
+        <div class="miniform">
+          <input id="conNombre" placeholder="Nombre completo *" value="${esc(cliente.nombre||'')}">
+          <input id="conTel" placeholder="Teléfono / WhatsApp *" inputmode="tel" value="${esc(cliente.tel||'')}">
+          <input id="conDir" placeholder="Dirección o referencia (opcional)" value="${esc(cliente.dir||'')}">
+          <textarea id="conNota" rows="2" placeholder="Nota (opcional)"></textarea>
+        </div>
+
+        <div class="combo-total"><span class="k">Tu total (${qty} u.)</span><span class="v">${fmt(precio*qty)}</span></div>
+        <button class="add-cta" id="conSend">Unirme al consolidado · ${fmt(precio*qty)}</button>
+      </div>`;
+
+    $('#closeSheet').onclick = closeProduct;
+    const refresh=()=>draw();
+    $('#cMinus').onclick=()=>{ qty=Math.max(1,qty-1); refresh(); };
+    $('#cPlus').onclick =()=>{ qty=qty+1; refresh(); };
+    function drawThumbs(){ $('#conThumbs').innerHTML=files.map((u,i)=>`<div class="pt"><img src="${esc(u.url)}"><button data-rm="${i}">×</button></div>`).join('');
+      $('#conThumbs').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ files.splice(+b.dataset.rm,1); drawThumbs(); }); }
+    drawThumbs();
+    $('#conFiles').onchange = async e => { const fs=[...e.target.files]; if(!fs.length)return; toast('Subiendo...'); for(const f of fs){ const u=await subirComprobante(f); if(u) files.push({url:u}); } drawThumbs(); toast('Comprobante listo'); };
+    const cmap={conNombre:'nombre',conTel:'tel',conDir:'dir'}; Object.keys(cmap).forEach(idc=>{ const el=document.getElementById(idc); if(el) el.oninput=()=>cliente[cmap[idc]]=el.value; });
+    $('#conSend').onclick = enviarCon;
+  }
+
+  async function enviarCon(){
+    const nombre=($('#conNombre').value||'').trim(), tel=($('#conTel').value||'').trim();
+    const dir=($('#conDir').value||'').trim(), nota=($('#conNota').value||'').trim();
+    if(!nombre||!tel){ toast('Pon tu nombre y teléfono'); return; }
+    const btn=$('#conSend'); btn.disabled=true; btn.textContent='Enviando...';
+    const { data, error } = await sb.rpc('crear_consolidado_pedido', {
+      p_cid:c.id, p_qty:qty, p_nombre:nombre, p_tel:tel, p_dir:dir||null, p_nota:nota||null,
+      p_comprobantes:files.map(f=>f.url)
+    });
+    if(error){ btn.disabled=false; btn.textContent='Unirme al consolidado'; toast('No se pudo enviar. Intenta de nuevo'); return; }
+    guardarCodigo(data);
+    okScreen('¡Te uniste al consolidado!', data, 'Tu pedido se sumó al grupo. Cuando confirmemos tu cupo te avisaremos por WhatsApp. Guarda tu código para consultar el estado.');
+    const precio=precioCon(qty);
+    const msg=`Hola ${enc(CONFIG.TIENDA_NOMBRE)}! Me uno al *CONSOLIDADO*:%0A• ${enc(c.nombre)} x${qty} = ${enc(fmt(precio*qty))}%0ACódigo: ${enc(data)}%0A%0A👤 ${enc(nombre)} · ${enc(tel)}`;
+    setTimeout(()=>{ if(confirm('¿Enviar también tu pedido por WhatsApp?')) window.open(`https://wa.me/${CONFIG.WHATSAPP}?text=${msg}`,'_blank'); }, 300);
+    load();
+  }
+
+  draw();
+  $('#overlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+
+/* ---- Comprobantes, código y pantalla de éxito ---- */
+const enc = s => encodeURIComponent(s);
+async function subirComprobante(file){
+  try{
+    const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+    const path=`pagos/${Date.now()}_${Math.random().toString(36).slice(2,7)}.${ext}`;
+    const { error } = await sb.storage.from(COMP_BUCKET).upload(path, file, {upsert:true});
+    if(error){ toast('No se pudo subir la imagen'); return null; }
+    return sb.storage.from(COMP_BUCKET).getPublicUrl(path).data.publicUrl;
+  }catch(e){ toast('No se pudo subir la imagen'); return null; }
+}
+function guardarCodigo(cod){ try{ const k='mispedidos_'+CONFIG.TIENDA_NOMBRE; const arr=JSON.parse(localStorage.getItem(k)||'[]'); arr.unshift(cod); localStorage.setItem(k, JSON.stringify([...new Set(arr)].slice(0,20))); }catch(e){} }
+function okScreen(titulo, codigo, texto){
+  $('#sheet').innerHTML = `<div class="hd" style="padding:22px 24px"><button class="close" id="closeSheet"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button></div>
+    <div class="bd"><div class="ok-screen">
+      <div style="font-size:2.6rem">✅</div>
+      <div class="big">${esc(titulo)}</div>
+      <div class="cod">${esc(codigo)}</div>
+      <p>${esc(texto)}</p>
+      <button class="add-cta" id="okClose" style="margin-top:18px">Entendido</button>
+    </div></div>`;
+  $('#closeSheet').onclick=closeProduct; $('#okClose').onclick=closeProduct;
+  $('#overlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+
+/* ---- Consultar estado por código ---- */
+function abrirConsulta(){
+  const k='mispedidos_'+CONFIG.TIENDA_NOMBRE; let ultimos=[]; try{ ultimos=JSON.parse(localStorage.getItem(k)||'[]'); }catch(e){}
+  $('#sheet').innerHTML = `<div class="hd" style="padding:22px 24px"><button class="close" id="closeSheet"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button></div>
+    <div class="bd">
+      <div class="marca">Consulta</div>
+      <h2>Estado de tu pedido</h2>
+      <div class="genero">Escribe tu código (empieza con PRE- o CON-) para ver si ya está confirmado.</div>
+      ${ultimos.length?`<div class="section-t">Tus últimos códigos</div><div class="chips" style="display:flex;flex-wrap:wrap;gap:8px">${ultimos.slice(0,6).map(c=>`<button class="np" data-cod="${esc(c)}" style="padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);color:var(--gold-1)">${esc(c)}</button>`).join('')}</div>`:''}
+      <div class="miniform"><input id="codInput" placeholder="Ej. PRE-A1B2C3" style="text-transform:uppercase"></div>
+      <button class="add-cta" id="codBtn" style="margin-top:14px">Consultar</button>
+      <div id="codResult" style="margin-top:16px"></div>
     </div>`;
-  document.getElementById('modal').classList.add('on');
-}
-function selectSize(i){
-  const pr=effList(modalProd)[i];
-  if(!pr||pr.stk<=0) return;
-  modalSel=i;
-  document.querySelectorAll('.size').forEach(b=>b.classList.toggle('on',+b.dataset.i===i));
-  document.getElementById('mPrice').innerHTML=`${pr.precio<pr.original?`<span class="price-old">${money(pr.original)}</span>`:''}${money(pr.precio)}${pr.tamano&&pr.tamano!=='Sellado'?`<small>${esc(pr.tamano)}</small>`:''}`;
-  modalMaxStock=isFinite(pr.stk)?pr.stk:Infinity; setModalQty(modalQty);
-}
-function closeModal(){ document.getElementById('modal').classList.remove('on'); }
-document.getElementById('modal').onclick=e=>{ if(e.target.id==='modal') closeModal(); };
-function qtyPicker(pr){
-  const maxS=(pr&&isFinite(pr.stk))?pr.stk:Infinity;
-  if(maxS<=0) return '';
-  const chips=[6,10,12,20,50,100].filter(n=> maxS===Infinity || n<=maxS).map(n=>`<button type="button" class="qp-chip" data-n="${n}" onclick="setModalQty(${n})">x${n}</button>`).join('');
-  return `<div class="qty-pick">
-    <div class="qp-lbl">Cantidad ${maxS!==Infinity?`<span>(máx ${maxS})</span>`:''}</div>
-    <div class="qp-row">
-      <div class="qp-stepper"><button type="button" onclick="incModalQty(-1)">−</button><input id="modalQtyInput" type="number" min="1" value="1" onchange="setModalQty(this.value)"><button type="button" onclick="incModalQty(1)">+</button></div>
-      ${chips?`<div class="qp-chips">${chips}</div>`:''}
-    </div>
-  </div>`;
-}
-function setModalQty(n){
-  n=Math.max(1,parseInt(n)||1);
-  if(isFinite(modalMaxStock)&&modalMaxStock>0) n=Math.min(n,modalMaxStock);
-  modalQty=n;
-  const inp=document.getElementById('modalQtyInput'); if(inp) inp.value=n;
-  document.querySelectorAll('.qp-chip').forEach(b=>b.classList.toggle('on',+b.dataset.n===n));
-  const lbl=document.getElementById('addBtnLbl'); if(lbl) lbl.textContent = n>1?`Agregar ${n} al pedido`:'Agregar al pedido';
-}
-function incModalQty(d){ setModalQty(modalQty+d); }
-function addSelected(){ const pr=effList(modalProd)[modalSel]; if(!pr||pr.stk<=0){ toast('Sin stock disponible'); return; } addToCart(modalProd,pr.tamano,pr.stk,modalQty); closeModal(); }
-function waSolo(){
-  const pr=effList(modalProd)[modalSel];
-  const qty=Math.max(1,modalQty||1);
-  const r=priceEngine([{id:modalProd.id,nombre:modalProd.nombre,tamano:pr.tamano,qty}],PRODUCTS,PROMOS,MAYOR_MIN);
-  const l=r.lines[0]||{unit:pr.precio,lineTotal:pr.precio*qty,promo:''};
-  const promoTxt=l.promo?` [${l.promo}]`:'';
-  const msg=`*Pedido — ${CONFIG.TIENDA_NOMBRE}*\n\n• ${qty}× ${modalProd.nombre}${pr.tamano&&pr.tamano!=='Sellado'?` (${pr.tamano})`:''} — ${money(l.lineTotal)}${promoTxt}\n\n*Total: ${money(r.total)}*`;
-  window.open(`https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}`,'_blank');
+  $('#closeSheet').onclick=closeProduct;
+  document.querySelectorAll('[data-cod]').forEach(b=>b.onclick=()=>{ $('#codInput').value=b.dataset.cod; consultar(); });
+  $('#codBtn').onclick=consultar;
+  async function consultar(){
+    const cod=($('#codInput').value||'').trim().toUpperCase(); if(!cod){ toast('Escribe tu código'); return; }
+    $('#codResult').innerHTML='<div class="state" style="padding:20px"><div class="spinner"></div></div>';
+    let r;
+    if(cod.startsWith('PRE')) r=await sb.rpc('consultar_preorden',{cod});
+    else if(cod.startsWith('CON')) r=await sb.rpc('consultar_consolidado',{cod});
+    else { $('#codResult').innerHTML='<div class="genero">El código debe empezar con PRE- o CON-.</div>'; return; }
+    const row = r&&r.data&&r.data[0];
+    if(!row){ $('#codResult').innerHTML='<div class="genero">No encontramos ese código. Revísalo e intenta de nuevo.</div>'; return; }
+    const est=row.estado||'pendiente';
+    const txt = est==='confirmado'?'¡Tu pedido está CONFIRMADO! ✅ Te contactaremos para la entrega.'
+      : est==='entregado'?'Pedido entregado. ¡Gracias! 🎉'
+      : est==='rechazado'?'Tu pedido fue rechazado. Escríbenos por WhatsApp para ayudarte.'
+      : 'Tu pedido está en revisión. Apenas confirmemos tu pago, cambiará a CONFIRMADO.';
+    $('#codResult').innerHTML=`<div style="text-align:center"><div class="est-badge ${esc(est)}">${esc(est.toUpperCase())}</div><p style="color:var(--muted);margin-top:10px;line-height:1.6">${txt}</p>${row.total?`<div class="genero" style="justify-content:center;margin-top:6px">Total: ${fmt(row.total)}</div>`:''}</div>`;
+  }
+  $('#overlay').classList.add('open'); document.body.style.overflow='hidden';
 }
 
-function saveCart(){ localStorage.setItem('cart_'+CONFIG.TIENDA_NOMBRE, JSON.stringify(cart)); }
-function addToCart(p,tamano,stk,qty){
-  qty=Math.max(1,parseInt(qty)||1);
-  const pres=(p.presentaciones||[]).find(x=>x.tamano===tamano)||{};
-  const pu=Number(pres.precio)||0;
-  const pm=Number(pres.precio_may)>0?Number(pres.precio_may):pu;
-  const key=p.id+'__'+tamano; const it=cart.find(x=>x.key===key);
-  const max=(stk===undefined||stk===Infinity||stk===null)?Infinity:Number(stk);
-  const have=it?it.qty:0; let addQty=qty;
-  if(max!==Infinity && have+addQty>max){ addQty=max-have; if(addQty<=0){ toast('Solo hay '+max+' en stock'); return; } toast('Ajustado a '+max+' (stock disponible)'); }
-  if(it){ it.qty+=addQty; }
-  else cart.push({key,id:p.id,nombre:p.nombre,marca:p.marca,tamano,pu,pm,imagen_url:p.imagen_url,qty:addQty,stk:(max===Infinity?null:max)});
-  saveCart(); renderCart(); notifyMayor(); pulseCart();
+/* ================= Filtros ================= */
+function renderFilters(){
+  const cats = ['Todos', ...(CONFIG.CATEGORIAS||[])];
+  const gens = ['Todos', ...(CONFIG.GENEROS||[])];
+  $('#filters').innerHTML = `
+    <span class="flabel">Tipo</span>
+    ${cats.map(c=>`<button class="chip ${filterCat===c?'active':''}" data-cat="${esc(c)}">${c==='Árabe'?'Árabes':esc(c)}</button>`).join('')}
+    <span class="flabel" style="margin-left:8px">Género</span>
+    ${gens.map(g=>`<button class="chip ${filterGen===g?'active':''}" data-gen="${esc(g)}">${esc(g)}</button>`).join('')}
+    <span class="count" id="fcount"></span>`;
+  document.querySelectorAll('[data-cat]').forEach(c=>c.onclick=()=>{filterCat=c.dataset.cat; renderFilters(); render();});
+  document.querySelectorAll('[data-gen]').forEach(c=>c.onclick=()=>{filterGen=c.dataset.gen; renderFilters(); render();});
 }
-function mayorInfo(){
-  const u=cart.reduce((s,i)=>s+i.qty,0), M=MAYOR_MIN, active=u>=M;
-  let txt;
-  if(active) txt='✓ Precio por mayor activado';
-  else if(u===M-1) txt='¡Falta 1! Con uno más se activan los precios por mayor';
-  else if(u>0) txt=`Faltan ${M-u} perfumes para el precio por mayor`;
-  else txt=`Llevando ${M} o más obtienes precio por mayor`;
-  return {u,M,active,txt};
+
+/* ================= Grid ================= */
+function render(){
+  let list = PRODUCTS.filter(p =>
+    (filterCat==='Todos' || p.categoria===filterCat) &&
+    (filterGen==='Todos' || p.genero===filterGen) &&
+    (!query || ((p.nombre||'')+' '+(p.marca||'')).toLowerCase().includes(query))
+  );
+  const fc=$('#fcount'); if(fc) fc.textContent = `${list.length} fragancia${list.length!==1?'s':''}`;
+  if(!list.length){ $('#grid').innerHTML = `<div class="state">No encontramos fragancias con ese filtro.</div>`; return; }
+
+  $('#grid').innerHTML = list.map(p => {
+    const desde = precioDesde(p);
+    const main = imgsOf(p)[0];
+    const off = maxOfertaCard(p);
+    return `<button class="card ${agotado(p)?'agotado':''}" data-id="${p.id}">
+      ${p.destacado ? '<span class="badge-dest">Destacado</span>' : ''}
+      ${off ? `<span class="badge-off">−${off}%</span>` : ''}
+      <div class="imgwrap">${main ? `<img src="${esc(main)}" alt="${esc(p.nombre)}" loading="lazy">` : `<span class="ph">${esc((p.marca||p.nombre||'?')[0])}</span>`}</div>
+      <div class="body">
+        <span class="marca">${esc(p.marca||'')}</span>
+        <span class="nombre">${esc(p.nombre)}</span>
+        ${stockLine(p)}
+        <div class="foot">
+          <span class="precio">${desde!=null?`<small>Desde</small><b>${fmt(desde)}</b>`:'<small>Precio</small><b>Consultar</b>'}</span>
+          <span class="ver">→</span>
+        </div>
+      </div>
+    </button>`;
+  }).join('');
+  document.querySelectorAll('.card').forEach(c => c.onclick = () => openProduct(c.dataset.id));
 }
+
+/* ================= Modal producto ================= */
+let selSize=null, curProduct=null;
+function openProduct(id){
+  const p = PROD_BY_ID[id]; if(!p) return;
+  curProduct = p; selSize = null;
+  const notas = NOTAS_BY_PROD[id] || [];
+  const imgs = imgsOf(p);
+  const mainImg = imgs[0];
+  const pres = presActivas(p);
+  const piramide = [['Salida',p.notas_salida],['Corazón',p.notas_corazon],['Fondo',p.notas_fondo]].filter(([,v])=>v);
+
+  $('#sheet').innerHTML = `
+    <div class="hd">
+      <button class="close" id="closeSheet" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+      ${mainImg ? `<img id="mainImg" src="${esc(mainImg)}" alt="${esc(p.nombre)}">` : `<div class="ph" style="font-size:4rem">${esc((p.marca||'?')[0])}</div>`}
+    </div>
+    ${imgs.length>1 ? `<div class="gallery">${imgs.map((u,i)=>`<button class="gthumb ${i===0?'active':''}" data-img="${esc(u)}"><img src="${esc(u)}" alt=""></button>`).join('')}</div>` : ''}
+    <div class="bd">
+      <div class="marca">${esc(p.marca||'')}</div>
+      <h2>${esc(p.nombre)}</h2>
+      <div class="genero">${esc(p.genero||'')}${p.descripcion?' · '+esc(p.descripcion):''}${p.categoria?`<span class="catchip">${esc(catLabel(p.categoria))}</span>`:''}</div>
+      ${(()=>{ const s=stockDe(p); if(s==null) return ''; const low=CONFIG.STOCK_BAJO||5; if(s<=0) return '<div><span class="stock-modal out">Agotado</span></div>'; if(s<=low) return `<div><span class="stock-modal low">¡Últimas ${s} unidades!</span></div>`; return `<div><span class="stock-modal ok">${s} disponibles</span></div>`; })()}
+
+      ${notas.length ? `<div class="section-t">Notas aromáticas</div>
+        <div class="notas-img">${notas.map(n=>`<div class="nota"><div class="ph">${n.imagen_url?`<img src="${esc(n.imagen_url)}" alt="${esc(n.nombre)}">`:esc((n.nombre||'?')[0])}</div><span>${esc(n.nombre)}</span></div>`).join('')}</div>` : ''}
+
+      ${piramide.length ? `<div class="section-t">Pirámide olfativa</div>
+        <div class="piramide">${piramide.map(([k,v])=>`<div class="row"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`).join('')}</div>` : ''}
+
+      ${(p.longevidad||p.estela||p.ocasion) ? `<div class="section-t">Perfil</div>
+        <div class="perfil">
+          ${p.longevidad?`<div class="p"><div class="k">Duración</div><div class="v">${esc(p.longevidad)}</div></div>`:''}
+          ${p.estela?`<div class="p"><div class="k">Estela</div><div class="v">${esc(p.estela)}</div></div>`:''}
+          ${p.ocasion?`<div class="p"><div class="k">Ocasión</div><div class="v">${esc(p.ocasion)}</div></div>`:''}
+        </div>` : ''}
+
+      <div class="section-t">Seleccionar presentación</div>
+      <div class="tallas" id="tallas">
+        ${pres.length ? pres.map(x=>{
+          const ef = precioEfectivo(p,x);
+          const base = Number(x.precio);
+          const antes = Number(x.antes)||base;
+          const ref = Math.max(antes, base);
+          const pct = ref>ef ? Math.round((ref-ef)/ref*100) : 0;
+          const may = Number(x.precio_may)||0;
+          return `<button class="talla ${pct?'oferta':''}" data-size="${esc(x.ml)}" data-price="${ef}" data-may="${may}">
+            ${pct?`<div class="off">−${pct}%</div>`:''}
+            <div class="ml">${mlLabel(x.ml)}</div>
+            <div class="pr">${pct?`<span class="antes">${fmt(ref)}</span>`:''}${fmt(ef)}</div>
+            ${(MAYOR_MIN>0&&may>0)?`<span class="may">x${MAYOR_MIN}+ · ${fmt(may)} c/u</span>`:''}
+          </button>`;
+        }).join('') : '<div class="v" style="color:var(--muted)">Precios a consultar por WhatsApp.</div>'}
+      </div>
+
+      <div class="envio">
+        <svg viewBox="0 0 24 24"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z" stroke-linejoin="round"/><circle cx="7" cy="17" r="1.6"/><circle cx="17" cy="17" r="1.6"/></svg>
+        <span>${esc(CONFIG.ENVIO_TEXTO||'')}</span>
+      </div>
+
+      <button class="add-cta" id="addBtn" disabled>${agotado(p)?'Agotado':'Elige una presentación'}</button>
+    </div>`;
+
+  document.querySelectorAll('#tallas .talla').forEach(t => t.onclick = () => {
+    if(agotado(p)) return;
+    document.querySelectorAll('#tallas .talla').forEach(x=>x.classList.remove('sel'));
+    t.classList.add('sel');
+    selSize = { size:t.dataset.size, price:+t.dataset.price, may:+t.dataset.may||0 };
+    const b=$('#addBtn'); b.disabled=false; b.textContent = `Añadir · ${mlLabel(t.dataset.size)} · ${fmt(t.dataset.price)}`;
+  });
+  document.querySelectorAll('.gthumb').forEach(t => t.onclick = () => {
+    const m=$('#mainImg'); if(m) m.src=t.dataset.img;
+    document.querySelectorAll('.gthumb').forEach(x=>x.classList.remove('active')); t.classList.add('active');
+  });
+  $('#addBtn').onclick = addToCart;
+  $('#closeSheet').onclick = closeProduct;
+  $('#overlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+function closeProduct(){ $('#overlay').classList.remove('open'); document.body.style.overflow=''; }
+$('#overlay').onclick = e => { if(e.target.id==='overlay') closeProduct(); };
+
+/* ================= Modal de combo ================= */
+let curCombo=null, selTier=null, comboQty=1, selAddons=new Set();
+function comboTotal(){
+  if(!curCombo||!selTier) return 0;
+  let t = Number(selTier.precio) * comboQty;
+  (curCombo.addons||[]).forEach((a,i)=>{ if(selAddons.has(i)) t += Number(a.precio)||0; });
+  return Math.round(t*100)/100;
+}
+function refreshComboTotal(){
+  const el=$('#comboTotalV'); if(el) el.textContent = fmt(comboTotal());
+  const b=$('#addComboBtn'); if(b){ b.disabled=!selTier; b.textContent = selTier?`Agregar al carrito · ${fmt(comboTotal())}`:'Elige un tamaño'; }
+}
+function openCombo(id){
+  const c = COMBOS.find(x=>x.id===id); if(!c) return;
+  curCombo=c; selTier=null; comboQty=1; selAddons=new Set();
+  const imgs=imgsOf(c); const mainImg=imgs[0];
+  const tallas=tallasActivas(c);
+  const incluye=Array.isArray(c.incluye)?c.incluye.filter(Boolean):[];
+  const addons=Array.isArray(c.addons)?c.addons.filter(a=>a&&a.nombre&&Number(a.precio)>0):[];
+
+  $('#sheet').innerHTML = `
+    <div class="hd">
+      <button class="close" id="closeSheet" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button>
+      ${mainImg ? `<img id="mainImg" src="${esc(mainImg)}" alt="${esc(c.nombre)}">` : `<div class="ph" style="font-size:4rem">${esc((c.nombre||'?')[0])}</div>`}
+    </div>
+    ${imgs.length>1 ? `<div class="gallery">${imgs.map((u,i)=>`<button class="gthumb ${i===0?'active':''}" data-img="${esc(u)}"><img src="${esc(u)}" alt=""></button>`).join('')}</div>` : ''}
+    <div class="bd">
+      <div class="marca">Promoción</div>
+      <h2>${esc(c.nombre)}</h2>
+      ${c.descripcion?`<div class="genero">${esc(c.descripcion)}</div>`:''}
+
+      ${incluye.length ? `<div class="section-t">Incluye</div>
+        <div class="incluye">${incluye.map(n=>`<span class="it">${esc(n)}</span>`).join('')}</div>` : ''}
+
+      <div class="section-t">Tamaños</div>
+      <div class="tallas" id="tallas">
+        ${tallas.map(t=>{
+          const antes=Number(t.antes)||0, pr=Number(t.precio);
+          return `<button class="talla ${t.mas_vendido?'best-on':''}" data-ml="${esc(t.ml)}" data-price="${pr}" data-antes="${antes||''}">
+            ${t.mas_vendido?'<div class="best">Más vendido</div>':''}
+            <div class="ml">${fmt(pr)}</div>
+            <div class="spr">${esc(mlLabel(t.ml))}${t.sprays?` / ${esc(t.sprays)} sprays`:''}</div>
+            ${antes&&antes>pr?`<div class="pr"><span class="antes">${fmt(antes)}</span></div>`:''}
+          </button>`;
+        }).join('')}
+      </div>
+
+      ${addons.length ? `<div class="combo-box">
+        <div class="cb-h">Combínalo y ahorra</div>
+        ${addons.map((a,i)=>{
+          const antes=Number(a.antes)||0, pr=Number(a.precio);
+          return `<label class="addon" data-addon="${i}">
+            <input type="checkbox" data-addcheck="${i}">
+            <div class="th">${a.imagen_url?`<img src="${esc(a.imagen_url)}" alt="">`:esc((a.nombre||'?')[0])}</div>
+            <div class="info"><div class="n">${esc(a.nombre)}${a.mas_vendido?'<span class="best2">Más vendido</span>':''}</div><div class="m">${a.ml?esc(mlLabel(a.ml)):''}</div></div>
+            <div class="pr">${antes&&antes>pr?`<span class="antes">${fmt(antes)}</span>`:''}<b>${fmt(pr)}</b></div>
+          </label>`;
+        }).join('')}
+      </div>` : ''}
+
+      <div class="combo-qty">
+        <span class="lbl">Cantidad</span>
+        <div class="stepper"><button id="cqMinus">−</button><span id="cqVal">1</span><button id="cqPlus">+</button></div>
+      </div>
+
+      <div class="envio">
+        <svg viewBox="0 0 24 24"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z" stroke-linejoin="round"/><circle cx="7" cy="17" r="1.6"/><circle cx="17" cy="17" r="1.6"/></svg>
+        <span>${esc(CONFIG.ENVIO_TEXTO||'')}</span>
+      </div>
+
+      <div class="combo-total"><span class="k">Total</span><span class="v" id="comboTotalV">${fmt(0)}</span></div>
+      <button class="add-cta" id="addComboBtn" disabled>Elige un tamaño</button>
+    </div>`;
+
+  document.querySelectorAll('#tallas .talla').forEach(t => t.onclick = () => {
+    document.querySelectorAll('#tallas .talla').forEach(x=>x.classList.remove('sel'));
+    t.classList.add('sel');
+    selTier = { ml:t.dataset.ml, precio:+t.dataset.price, antes:+t.dataset.antes||null };
+    refreshComboTotal();
+  });
+  document.querySelectorAll('[data-addcheck]').forEach(ch => ch.onchange = () => {
+    const i=+ch.dataset.addcheck; if(ch.checked) selAddons.add(i); else selAddons.delete(i);
+    refreshComboTotal();
+  });
+  document.querySelectorAll('.gthumb').forEach(t => t.onclick = () => {
+    const m=$('#mainImg'); if(m) m.src=t.dataset.img;
+    document.querySelectorAll('.gthumb').forEach(x=>x.classList.remove('active')); t.classList.add('active');
+  });
+  $('#cqMinus').onclick=()=>{ comboQty=Math.max(1,comboQty-1); $('#cqVal').textContent=comboQty; refreshComboTotal(); };
+  $('#cqPlus').onclick =()=>{ comboQty++; $('#cqVal').textContent=comboQty; refreshComboTotal(); };
+  $('#addComboBtn').onclick = addComboToCart;
+  $('#closeSheet').onclick = closeProduct;
+  // auto-selecciona la talla "más vendido" si existe, si no la primera
+  const best = tallas.findIndex(t=>t.mas_vendido);
+  const pick = document.querySelectorAll('#tallas .talla')[best>=0?best:0];
+  if(pick) pick.click();
+  $('#overlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+function addComboToCart(){
+  if(!curCombo || !selTier) return;
+  const cid='combo_'+curCombo.id;
+  const key=cid+'_'+selTier.ml;
+  const found=CART.find(i=>i.key===key);
+  if(found) found.qty+=comboQty;
+  else CART.push({ key, id:cid, tipo:'combo', nombre:curCombo.nombre, marca:'Combo', categoria:'Promoción', img:imgsOf(curCombo)[0], ml:selTier.ml, precio:selTier.precio, antes:selTier.antes||null, qty:comboQty });
+  (curCombo.addons||[]).forEach((a,i)=>{
+    if(!selAddons.has(i)) return;
+    const akey='addon_'+curCombo.id+'_'+i;
+    const f=CART.find(x=>x.key===akey);
+    if(f) f.qty+=1;
+    else CART.push({ key:akey, id:akey, tipo:'addon', nombre:a.nombre, marca:'Combínalo', img:a.imagen_url||'', ml:a.ml||'', precio:Number(a.precio), antes:Number(a.antes)||null, qty:1 });
+  });
+  saveCart(); toast(`Añadido: ${curCombo.nombre}`);
+  closeProduct(); openCart();
+}
+
+/* ================= Carrito ================= */
+function addToCart(){
+  if(!curProduct || !selSize) return;
+  const s = stockDe(curProduct);
+  if(s!=null && qtyEnCarrito(curProduct.id) >= s){ toast(s<=0?'Producto agotado':'No hay más stock disponible'); return; }
+  const key = curProduct.id + '_' + selSize.size;
+  const found = CART.find(i=>i.key===key);
+  if(found) found.qty++;
+  else CART.push({ key, id:curProduct.id, nombre:curProduct.nombre, marca:curProduct.marca, categoria:curProduct.categoria, img:imgsOf(curProduct)[0], ml:selSize.size, precio:selSize.price, precio_may:selSize.may||0, qty:1 });
+  saveCart();
+  if(regaloDisponible()) toast('🎁 ¡Ganaste un regalo! Elígelo en tu pedido');
+  else toast(`Añadido: ${curProduct.nombre} (${mlLabel(selSize.size)})`);
+  closeProduct(); openCart();
+}
+function saveCart(){ localStorage.setItem('cart_'+CONFIG.TIENDA_NOMBRE, JSON.stringify(CART)); renderCart(); }
+
+/* Agregar un decant de regalo elegido por el cliente */
+function addGift(promoId){
+  const g = GIFT_STATUS.find(x=>x.promoId===promoId); if(!g) return;
+  const chosen = CART.filter(i=>i.tipo==='regalo'&&i.promoId===promoId).length;
+  if(chosen>=g.giftsEarned){ toast('Ya elegiste todos tus regalos'); return; }
+  const sel=document.getElementById('giftSel_'+promoId);
+  const pid = sel ? sel.value : (g.opciones[0]&&g.opciones[0].id);
+  const opt = g.opciones.find(o=>o.id===pid); if(!opt){ toast('Elige un perfume'); return; }
+  CART.push({ key:'regalo_'+promoId+'_'+pid+'_'+Date.now(), id:'regalo_'+pid, tipo:'regalo', promoId, nombre:opt.nombre, marca:'Regalo', img:opt.img||'', ml:g.ml, precio:0, qty:1 });
+  saveCart(); toast('🎁 ¡Regalo agregado: '+opt.nombre+'!');
+}
+/* ¿Hay un regalo recién disponible para elegir? */
+function regaloDisponible(){
+  return (GIFT_STATUS||[]).some(g=>{
+    const chosen = CART.filter(i=>i.tipo==='regalo'&&i.promoId===g.promoId).length;
+    return g.giftsEarned>chosen && g.opciones.length;
+  });
+}
+
 function mayorBanner(){
-  const {u,M,active,txt}=mayorInfo();
-  const pct=Math.max(6,Math.min(100,Math.round(u/M*100)));
+  if(!hayMayorEnCarrito()) return '';
+  const u=unidadesCarrito(), M=MAYOR_MIN, active=u>=M;
+  const lbl=(CONFIG.LABEL_MAYORISTA||'Precio por mayor');
+  let txt = active ? `✓ ${lbl} activado`
+    : (u===M-1 ? `¡Falta 1! Con un perfume más se activa el ${lbl.toLowerCase()}`
+    : `Faltan ${M-u} perfumes para el ${lbl.toLowerCase()}`);
+  const pct=Math.min(100, Math.round(u/Math.max(1,M)*100));
   return `<div class="mayor-note ${active?'on':''}">${txt}<div class="bar"><i style="width:${pct}%"></i></div></div>`;
 }
-function notifyMayor(){ const {u,txt}=mayorInfo(); if(u<=0) return; toast(txt.replace('✓ ','')); }
-function cartNotices(){
-  const r=computeCart(); let h='';
-  const mez=r.escalas.filter(p=>(p.config||{}).alcance!=='producto');
-  if(mez.length){
-    const act=new Set(); mez.forEach(pr=>((pr.config||{}).niveles||ESCALA_MINS_C).forEach(m=>act.add(Number(m))));
-    const next=[...act].sort((a,b)=>a-b).find(m=>r.totalUnits<m);
-    if(next) h+=`<div class="cart-tip">Agrega ${next-r.totalUnits} y los perfumes bajan al nivel x${next}</div>`;
-  }
-  r.escalas.filter(p=>(p.config||{}).alcance==='producto').forEach(pr=>{
-    const c=pr.config||{}; const niveles=(c.niveles||ESCALA_MINS_C).map(Number).sort((a,b)=>a-b);
-    (c.productos||[]).forEach(n=>{ const q=r.qtyByName[n]||0; if(!q) return; const nx=niveles.find(m=>q<m); if(nx) h+=`<div class="cart-tip">${esc(n)}: con ${nx-q} más llega al nivel x${nx}</div>`; });
-  });
-  r.combos.forEach(pr=>{
-    const c=pr.config||{}, L=c.productos||[]; if(L.length<2) return;
-    const faltan=L.filter(n=>!(r.qtyByName[n]>0));
-    if(faltan.length===0) h+=`<div class="cart-tip ok">✓ Pack ${esc(pr.nombre)} activado · ${money(c.precio)}</div>`;
-    else h+=`<div class="cart-tip">Pack ${esc(pr.nombre)} (${money(c.precio)}): agrega ${faltan.map(esc).join(', ')}</div>`;
-  });
-  return h;
-}
-function activeEscalaMins(nombre){
-  const set=new Set();
-  _promosVigentes(PROMOS).filter(p=>p.tipo==='cantidad').forEach(pr=>{
-    const c=pr.config||{};
-    const applies=c.alcance==='producto'?(c.productos||[]).includes(nombre):true;
-    if(!applies) return;
-    (c.niveles&&c.niveles.length?c.niveles:ESCALA_MINS_C).forEach(m=>set.add(Number(m)));
-  });
-  return set;
-}
-function offerChips(p){
-  const pr0=(p.presentaciones||[])[0]||{}; if(!pr0.precio) return '';
-  const act=activeEscalaMins(p.nombre); const u=cart.reduce((s,i)=>s+i.qty,0);
-  let chips=[`<span class="ochip">1u ${money(pr0.precio)}</span>`];
-  if(pr0.precio_may) chips.push(`<span class="ochip ${u>=MAYOR_MIN?'on':'hint'}">x${MAYOR_MIN} ${money(pr0.precio_may)} <small>${u>=MAYOR_MIN?'activo':'por mayor'}</small></span>`);
-  (pr0.escala||[]).forEach(t=>{ const on=act.has(Number(t.min)); const reached=u>=t.min; chips.push(`<span class="ochip ${on?(reached?'on':'avail'):'off'}">x${t.min} ${money(t.precio)}${on&&!reached?` <small>faltan ${t.min-u}</small>`:''}</span>`); });
-  return `<div class="ochips">${chips.join('')}</div>`;
-}
-function offerBarText(){
-  const u=cart.reduce((s,i)=>s+i.qty,0); if(u<=0) return '';
-  if(u<MAYOR_MIN) return `Agrega ${MAYOR_MIN-u} para el precio por mayor`;
-  let nextMin=null;
-  cart.forEach(it=>{ const set=activeEscalaMins(it.nombre); const prod=PRODUCTS.find(x=>x.id===it.id); const esc=prod?(((prod.presentaciones||[])[0]||{}).escala||[]):[]; esc.forEach(t=>{ if(set.has(Number(t.min))&&u<t.min){ if(nextMin===null||t.min<nextMin) nextMin=t.min; } }); });
-  if(nextMin) return `Agrega ${nextMin-u} para el nivel x${nextMin}`;
-  return '✓ Precio por mayor activo';
-}
-function updateOfferBar(){
-  const bar=document.getElementById('offerBar'); if(!bar) return;
-  if(!cart.length){ bar.style.display='none'; return; }
-  const r=computeCart(); const hint=offerBarText();
-  bar.style.display='inline-flex';
-  bar.innerHTML=`<span class="ob-c">🛒 ${r.totalUnits}</span> <b>${money(r.total)}</b>${hint?` · <span class="ob-h">${hint}</span>`:''}`;
-}
-function pulseCart(){ const cb=document.getElementById('cartBtn'); if(!cb) return; cb.classList.remove('pulse'); void cb.offsetWidth; cb.classList.add('pulse'); }
-function renderLadderInfo(){
-  const el=document.getElementById('ladderInfo'); if(!el) return;
-  const vig=_promosVigentes(PROMOS);
-  const cant=vig.filter(p=>p.tipo==='cantidad');
-  const combos=vig.filter(p=>p.tipo==='combo');
-  const act=new Set(); cant.forEach(pr=>((pr.config||{}).niveles||[]).forEach(m=>act.add(Number(m))));
-  const niveles=[...act].sort((a,b)=>a-b).map(m=>'x'+m);
-  const comboTxt=combos.map(pr=>`${esc(pr.nombre)}: ${((pr.config||{}).productos||[]).map(esc).join(' + ')} = ${money((pr.config||{}).precio)}`);
-  if(!niveles.length && !comboTxt.length){ el.innerHTML=''; return; }
-  let h='<div class="ladder">';
-  if(niveles.length) h+=`<b>Mientras más llevas, más barato:</b> desde ${MAYOR_MIN} por mayor · ${niveles.join(' · ')} <span style="opacity:.7">(precio según el perfume)</span>`;
-  if(comboTxt.length) h+=`${niveles.length?'<br>':''}<b>Packs:</b> ${comboTxt.join(' · ')}`;
-  h+='</div>'; el.innerHTML=h;
-}
-function changeQty(key,d){ const it=cart.find(x=>x.key===key); if(!it) return; const max=(it.stk===undefined||it.stk===null)?Infinity:Number(it.stk); if(d>0&&it.qty+1>max){ toast('Solo hay '+max+' en stock'); return; } it.qty+=d; if(it.qty<=0) cart=cart.filter(x=>x.key!==key); saveCart(); renderCart(); if(d>0){ notifyMayor(); pulseCart(); } }
-function removeItem(key){ cart=cart.filter(x=>x.key!==key); saveCart(); renderCart(); }
 function renderCart(){
-  const r=computeCart();
-  const n=cart.reduce((s,i)=>s+i.qty,0);
-  const badge=document.getElementById('cartCount'); badge.textContent=n; badge.style.display=n?'flex':'none';
-  const box=document.getElementById('cartItems'); const foot=document.getElementById('cartFoot');
-  if(!cart.length){ box.innerHTML='<div class="cart-empty"><span class="serif">Tu pedido está vacío</span>Elige un perfume y su talla.</div>'; foot.style.display='none'; updateOfferBar(); return; }
-  foot.style.display='block';
-  box.innerHTML=mayorBanner()+cartNotices()+r.lines.map(l=>{
-    const img=l.imagen_url?`<img class="ci-img" src="${l.imagen_url}" alt="">`:`<div class="ci-img">${noimg}</div>`;
-    const disc=l.unit<l.unitOrig;
-    return `<div class="ci">${img}
-      <div class="ci-info"><h4>${esc(l.nombre)}</h4>
-        <div class="s">${esc(l.marca||'')}${l.tamano&&l.tamano!=='Sellado'?' · '+esc(l.tamano):''}</div>
-        <div class="p">${disc?`<span class="old">${money(l.unitOrig*l.qty)}</span>`:''}${money(l.lineTotal)}${l.promo?`<span class="ci-promo">${esc(l.promo)}</span>`:''}</div>
-        <button class="rm" onclick="removeItem('${l.key}')">Quitar</button>
+  const n = CART.reduce((s,i)=>s+i.qty,0);
+  const cc=$('#cartCount'); cc.textContent=n; cc.style.display=n?'grid':'none';
+
+  if(!CART.length){
+    $('#cartList').innerHTML = `<div class="cart-empty"><b style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:var(--cream)">Tu pedido está vacío</b><br>Añade tus fragancias favoritas.</div>`;
+    $('#cartBot').style.display='none'; GIFT_STATUS=[]; return;
+  }
+
+  let R = window.PROMOS_ENGINE.computeCart(pricedCart(), PROD_BY_ID, PROMOS);
+  // Reconciliar regalos: nunca más regalos de los ganados (si bajan los requisitos, se quitan)
+  let giftChanged=false;
+  (R.regalos||[]).forEach(g=>{
+    const gifts = CART.filter(i=>i.tipo==='regalo'&&i.promoId===g.promoId);
+    if(gifts.length > g.giftsEarned){
+      const sobra = new Set(gifts.slice(g.giftsEarned));
+      CART = CART.filter(i=>!sobra.has(i));
+      giftChanged=true;
+    }
+  });
+  if(giftChanged){ localStorage.setItem('cart_'+CONFIG.TIENDA_NOMBRE, JSON.stringify(CART)); R = window.PROMOS_ENGINE.computeCart(pricedCart(), PROD_BY_ID, PROMOS); }
+  GIFT_STATUS = R.regalos || [];
+
+  const itemsHtml = R.lines.map(i => {
+    if(i.tipo==='regalo'){
+      return `<div class="ci gift">
+        <div class="th">${i.img?`<img src="${esc(i.img)}" alt="">`:'🎁'}</div>
+        <div class="info">
+          <div class="n">${esc(i.nombre)} <span class="gift-tag">Regalo</span></div>
+          <div class="m">${i.ml?esc(mlLabel(i.ml)):''} · GRATIS</div>
+        </div>
+        <button class="rm" data-rm="${i.key}">Quitar</button>
+      </div>`;
+    }
+    return `<div class="ci">
+      <div class="th">${i.img?`<img src="${esc(i.img)}" alt="">`:''}</div>
+      <div class="info">
+        <div class="n">${esc(i.nombre)}</div>
+        <div class="m">${esc(i.marca||'')} · ${mlLabel(i.ml)}</div>
+        <div class="pr">${i.unit<i.unitOrig?`<span class="antes" style="color:var(--muted-2);text-decoration:line-through;margin-right:5px">${fmt(i.unitOrig)}</span>`:''}${fmt(i.unit)}${i.promo?` <span style="color:var(--ok);font-size:.72rem">· ${esc(i.promo)}</span>`:''}</div>
+        <div class="qty"><button data-dec="${i.key}">−</button><span>${i.qty}</span><button data-inc="${i.key}">+</button></div>
       </div>
-      <div class="qty"><button onclick="changeQty('${l.key}',-1)">−</button><span>${l.qty}</span><button onclick="changeQty('${l.key}',1)">+</button></div>
+      <button class="rm" data-rm="${i.key}">Quitar</button>
     </div>`;
-  }).join('') + (r.comboDisc.length?`<div style="padding:10px 0 2px">${r.comboDisc.map(c=>`<div class="promo-line"><span>🎁 ${esc(c.nombre)}</span><span>- ${money(c.monto)}</span></div>`).join('')}</div>`:'');
-  document.getElementById('cartTotal').textContent=money(r.total);
-  updateOfferBar();
-  const _chk=document.getElementById('confirmChk'); if(_chk){ const done=alreadySubmitted(); _chk.checked=done; if(done) setOrderMsg('✓ Pedido registrado. Continúa por WhatsApp 👇','ok'); else if((document.getElementById('orderMsg')||{}).className!=='order-msg err') setOrderMsg('',''); }
-}
-function openCart(){ document.getElementById('overlay').classList.add('on'); document.getElementById('drawer').classList.add('on'); }
-function closeCart(){ document.getElementById('overlay').classList.remove('on'); document.getElementById('drawer').classList.remove('on'); }
-document.getElementById('cartBtn').onclick=openCart;
-document.getElementById('closeCart').onclick=closeCart;
-document.getElementById('overlay').onclick=closeCart;
-function orderSig(){ const r=computeCart(); return JSON.stringify(cart.map(i=>[i.id,i.tamano,i.qty]))+'|'+r.total; }
-function alreadySubmitted(){ try{ return localStorage.getItem('bp_order_sig')===orderSig(); }catch(e){ return false; } }
-function markSubmitted(){ try{ localStorage.setItem('bp_order_sig',orderSig()); }catch(e){} }
-function setOrderMsg(t,cls){ const el=document.getElementById('orderMsg'); if(el){ el.textContent=t; el.className='order-msg '+(cls||''); } }
-async function submitPedido(origen){
-  if(!cart.length) return {ok:false};
-  if(alreadySubmitted()) return {ok:true,dup:true};
-  const r=computeCart();
-  const items=r.lines.map(l=>({nombre:l.nombre,tamano:l.tamano,cantidad:l.qty,precio:l.unit,subtotal:l.lineTotal,promo:l.promo||null}));
-  const combos=r.comboDisc.map(c=>({nombre:c.nombre,packs:c.packs,monto:c.monto}));
-  const payload={ estado:'pendiente', origen, tipo:r.mayor?'mayorista':'minorista', items, combos, total:r.total,
-    cliente:(document.getElementById('cName').value||'').trim()||null, telefono:(document.getElementById('cPhone').value||'').trim()||null };
-  try{ const {error}=await sb.from('ventas').insert(payload); if(error) return {ok:false,error:error.message}; markSubmitted(); return {ok:true}; }
-  catch(e){ return {ok:false,error:String(e)}; }
-}
-document.getElementById('confirmChk').onchange=async(e)=>{
-  if(!e.target.checked){ setOrderMsg('',''); return; }
-  if(!cart.length){ e.target.checked=false; toast('Tu carrito está vacío'); return; }
-  setOrderMsg('Registrando pedido…','');
-  const res=await submitPedido('confirmacion');
-  if(res.ok){ setOrderMsg(res.dup?'Tu pedido ya estaba registrado. Continúa por WhatsApp 👇':'✓ ¡Pedido registrado! Ahora escríbenos por WhatsApp para coordinar 👇','ok'); }
-  else { e.target.checked=false; setOrderMsg('No se pudo registrar ('+(res.error||'reintenta')+'). Igual puedes pedir por WhatsApp.','err'); }
-};
-document.getElementById('waBtn').onclick=async()=>{
-  if(!cart.length) return;
-  const r=computeCart();
-  submitPedido('whatsapp');
-  const nombre=document.getElementById('cName').value.trim();
-  const tel=document.getElementById('cPhone').value.trim();
-  let msg=`*Nuevo pedido — ${CONFIG.TIENDA_NOMBRE}*${r.mayor?' (precio por mayor)':''}\n\n`;
-  r.lines.forEach(l=>{ msg+=`• ${l.qty}× ${l.nombre}${l.tamano&&l.tamano!=='Sellado'?` (${l.tamano})`:''} — ${money(l.lineTotal)}${l.promo?' ['+l.promo+']':''}\n`; });
-  r.comboDisc.forEach(c=>{ msg+=`🎁 ${c.nombre}: - ${money(c.monto)}\n`; });
-  msg+=`\n*Total: ${money(r.total)}*`;
-  if(nombre) msg+=`\n\nCliente: ${nombre}`;
-  if(tel) msg+=`\nWhatsApp: ${tel}`;
-  window.open(`https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}`,'_blank');
-};
+  }).join('');
 
-let t; document.getElementById('search').oninput=e=>{ clearTimeout(t); t=setTimeout(()=>{ q=e.target.value.toLowerCase().trim(); render(); },180); };
-document.getElementById('sort').onchange=render;
-let tt; function toast(m){ const el=document.getElementById('toast'); el.textContent=m; el.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('on'),1800); }
-async function refreshStock(){
-  const dr=document.getElementById('drawer'), md=document.getElementById('modal');
-  if((dr&&dr.classList.contains('on'))||(md&&md.classList.contains('on'))) return;
-  const { data, error } = await sb.from('productos').select('*');
-  if(error||!data) return;
-  PRODUCTS=data.filter(p=>p.visible!==false && presActivas(p).length>0);
-  render();
-}
-setInterval(refreshStock,60000);
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refreshStock(); });
+  const giftHtml = (R.regalos||[]).map(g=>{
+    const chosen = CART.filter(i=>i.tipo==='regalo'&&i.promoId===g.promoId).length;
+    if(g.giftsEarned>chosen){
+      const porElegir=g.giftsEarned-chosen;
+      if(g.opciones.length){
+        return `<div class="gift-box">
+          <div class="gift-h">🎁 ¡Tienes ${porElegir} regalo${porElegir>1?'s':''} por elegir!</div>
+          <div class="gift-row">
+            <select id="giftSel_${g.promoId}">${g.opciones.map(o=>`<option value="${esc(o.id)}">${esc(o.nombre)}${g.ml?` — ${esc(mlLabel(g.ml))}`:''}</option>`).join('')}</select>
+            <button data-giftadd="${g.promoId}">Agregar</button>
+          </div>
+        </div>`;
+      }
+      return `<div class="upsell">🎁 ¡Ganaste ${porElegir} regalo${porElegir>1?'s':''}! Pero aún no hay perfumes de regalo configurados. (Admin: marca los perfumes de regalo y que estén visibles.)</div>`;
+    }
+    if(g.giftsEarned===0 && g.faltan>0){
+      const sizeTxt = (g.mls&&g.mls.length)? ' de '+g.mls.map(mlLabel).join('/') : '';
+      return `<div class="upsell">🎁 Te falta${g.faltan>1?'n':''} ${g.faltan} decant${g.faltan>1?'s':''}${sizeTxt} para llevarte un regalo: <b>${esc(g.nombre)}</b></div>`;
+    }
+    return '';
+  }).join('');
 
-function pmNoteText(){ return PRICE_MODE==='may' ? `Estos precios se aplican al llevar ${MAYOR_MIN} o más` : `Llevando ${MAYOR_MIN} o más obtienes precio por mayor`; }
-function setMode(m){ if(PRICE_MODE===m) return; PRICE_MODE=m; document.querySelectorAll('.pm-btn').forEach(b=>b.classList.toggle('on',b.dataset.mode===m)); document.getElementById('pmNote').textContent=pmNoteText(); render(); if(document.getElementById('modal').classList.contains('on')&&modalProd) openModal(modalProd.id); }
-document.getElementById('pmMin').onclick=()=>setMode('min');
-document.getElementById('pmMay').onclick=()=>setMode('may');
-document.getElementById('pmMin').textContent=CONFIG.LABEL_MINORISTA||'Minorista';
-document.getElementById('pmMay').textContent=CONFIG.LABEL_MAYORISTA||'Mayorista';
-document.getElementById('pmNote').textContent=pmNoteText();
-renderCart(); load();
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
-let deferredPrompt=null;
-window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredPrompt=e; const b=document.getElementById('installBtn'); if(b) b.style.display='inline-flex'; });
-{ const _ib=document.getElementById('installBtn'); if(_ib) _ib.onclick=async()=>{ if(!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; _ib.style.display='none'; }; }
-window.addEventListener('appinstalled',()=>{ const b=document.getElementById('installBtn'); if(b) b.style.display='none'; });
+  $('#cartList').innerHTML = mayorBanner() + itemsHtml + giftHtml
+    + (R.upsells.length ? R.upsells.map(u=>`<div class="upsell">🌟 ${esc(u)}</div>`).join('') : '')
+    + (R.comboDisc.length ? R.comboDisc.map(c=>`<div class="promo-line">🎁 ${esc(c.nombre)}: −${fmt(c.monto)}</div>`).join('') : '');
+
+  $('#cartList').querySelectorAll('[data-inc]').forEach(b=>b.onclick=()=>chgQty(b.dataset.inc,1));
+  $('#cartList').querySelectorAll('[data-dec]').forEach(b=>b.onclick=()=>chgQty(b.dataset.dec,-1));
+  $('#cartList').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{CART=CART.filter(i=>i.key!==b.dataset.rm); saveCart();});
+  $('#cartList').querySelectorAll('[data-giftadd]').forEach(b=>b.onclick=()=>addGift(b.dataset.giftadd));
+
+  const yapeOn = payMethod==='yape' && CONFIG.YAPE_NUMERO;
+  $('#cartBot').style.display='block';
+  $('#cartBot').innerHTML = `
+    <div class="cliente-box">
+      <div class="cliente-t">Tus datos <span>(opcional — para registrar tu pedido)</span></div>
+      <input id="cNombre" placeholder="Nombre" value="${esc(cliente.nombre||'')}">
+      <input id="cTel" placeholder="Teléfono / WhatsApp" inputmode="tel" value="${esc(cliente.tel||'')}">
+      <input id="cDir" placeholder="Dirección o referencia (opcional)" value="${esc(cliente.dir||'')}">
+    </div>
+    ${CONFIG.YAPE_NUMERO ? `<div class="pay-toggle">
+      <button class="${payMethod==='yape'?'on':''}" data-pay="yape">Pagar con Yape</button>
+      <button class="${payMethod==='coordinar'?'on coord':''}" data-pay="coordinar">Coordinar pago</button>
+    </div>`:''}
+    ${yapeOn ? `<div class="yape-box">Yape a <b>${esc(CONFIG.YAPE_NUMERO)}</b>${CONFIG.YAPE_NOMBRE?` (<b>${esc(CONFIG.YAPE_NOMBRE)}</b>)`:''} y pega el N° de operación:
+      <input id="yapeOp" placeholder="N° de operación" inputmode="numeric"></div>`:''}
+    ${R.ahorro>0?`<div class="tot"><span class="k">Subtotal</span><span class="tach">${fmt(R.totalSinDesc)}</span></div>`:''}
+    <div class="tot big"><span class="k">Total</span><span class="v">${fmt(R.total)}</span></div>
+    ${R.ahorro>0?`<div class="ahorro">Ahorras ${fmt(R.ahorro)} 🎉</div>`:''}
+    <button class="wa" id="waCheckout"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.9-1.4A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1 1 12 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1a6.5 6.5 0 0 1-3.2-2.8c-.1-.2 0-.4.1-.5l.4-.5c.1-.1.1-.3 0-.4l-.7-1.7c-.2-.4-.4-.4-.5-.4h-.5c-.2 0-.4.1-.6.3-.7.7-.9 1.6-.6 2.6.5 1.6 1.6 3 3.2 3.9 2 1.1 3.3 1 4.2.9.6-.1 1.4-.6 1.6-1.2.2-.5.2-1 .1-1.1z"/></svg>Pedir por WhatsApp</button>`;
+
+  $('#cartBot').querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>{ payMethod=b.dataset.pay; renderCart(); });
+  const cmap={cNombre:'nombre',cTel:'tel',cDir:'dir'};
+  Object.keys(cmap).forEach(idc=>{ const el=document.getElementById(idc); if(el) el.oninput=()=>{ cliente[cmap[idc]]=el.value; }; });
+  $('#waCheckout').onclick = () => checkout(R);
+}
+function chgQty(key,d){ const i=CART.find(x=>x.key===key); if(!i)return;
+  if(d>0){ const p=PROD_BY_ID[i.id]; const s=p?stockDe(p):null; if(s!=null && qtyEnCarrito(i.id)>=s){ toast('No hay más stock disponible'); return; } }
+  i.qty+=d; if(i.qty<1)CART=CART.filter(x=>x.key!==key); saveCart(); }
+function openCart(){ renderCart(); $('#drawer').classList.add('open'); document.body.style.overflow='hidden'; }
+function closeCart(){ $('#drawer').classList.remove('open'); document.body.style.overflow=''; }
+$('#openCart').onclick = openCart;
+document.querySelectorAll('[data-close-cart]').forEach(el=>el.onclick=closeCart);
+
+async function checkout(R){
+  if(!CART.length){ toast('Tu pedido está vacío'); return; }
+  const nombre=(cliente.nombre||'').trim(), tel=(cliente.tel||'').trim(), dir=(cliente.dir||'').trim();
+  const op = ($('#yapeOp')?.value||'').trim();
+  const enc = s => encodeURIComponent(s);
+
+  // Registrar la venta (no bloquea el pedido si falla)
+  try{
+    const items = R.lines.map(i => ({ id:i.id, nombre:i.nombre, marca:i.marca||'', ml:i.ml, qty:i.qty, precio:i.unit, total:i.lineTotal }));
+    await sb.from('ventas').insert({
+      cliente_nombre:nombre||null, cliente_telefono:tel||null, cliente_direccion:dir||null,
+      items, subtotal:R.totalSinDesc, descuento:R.ahorro, total:R.total,
+      metodo_pago:payMethod, yape_operacion:(payMethod==='yape'?op:'')||null, estado:'nuevo'
+    });
+  }catch(e){ console.warn('No se pudo registrar la venta:', e); }
+
+  // Armar mensaje de WhatsApp
+  let msg = `¡Hola ${enc(CONFIG.TIENDA_NOMBRE)}! Quiero hacer este pedido:%0A%0A`;
+  R.lines.forEach(i => {
+    if(i.tipo==='regalo') msg += `• 🎁 ${enc(i.nombre)} — ${enc(mlLabel(i.ml))} x${i.qty} = GRATIS%0A`;
+    else msg += `• ${enc(i.nombre)} (${enc(i.marca||'')}) — ${enc(mlLabel(i.ml))} x${i.qty} = ${enc(fmt(i.unit*i.qty))}%0A`;
+  });
+  if(R.ahorro>0) msg += `%0A🎉 Ahorro: ${enc(fmt(R.ahorro))}`;
+  msg += `%0A*Total: ${enc(fmt(R.total))}*`;
+  if(nombre||tel||dir){
+    msg += `%0A%0A👤 *Mis datos:*%0A${nombre?`Nombre: ${enc(nombre)}%0A`:''}${tel?`Teléfono: ${enc(tel)}%0A`:''}${dir?`Dirección: ${enc(dir)}`:''}`;
+  }
+  if(payMethod==='yape' && CONFIG.YAPE_NUMERO){
+    msg += `%0A%0A💜 Pago por *Yape* a ${enc(CONFIG.YAPE_NUMERO)}${op?`%0AN° de operación: ${enc(op)}`:''}`;
+  }
+  window.open(`https://wa.me/${CONFIG.WHATSAPP}?text=${msg}`, '_blank');
+}
+
+/* ================= Buscador ================= */
+$('#q').oninput = e => { query = e.target.value.trim().toLowerCase();
+  if(currentView==='promos') renderCombos();
+  else if(currentView==='preorden') renderPre();
+  else if(currentView==='consolidado') renderCon();
+  else render();
+};
+const _be=$('#btnEstado'); if(_be) _be.onclick = abrirConsulta;
+document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeProduct(); closeCart(); } });
+
+/* ================= Pestañas Catálogo / Promociones ================= */
+document.querySelectorAll('#viewtabs .vtab').forEach(b => b.onclick = () => setView(b.dataset.view));
+
+let toastT; function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2400); }
+
+renderCart();
+load().finally(()=>setTimeout(()=>{ const l=$('#loader'); if(l) l.classList.add('hide'); }, 450));
 </script>
+<script src="install.js"></script>
 </body>
 </html>
