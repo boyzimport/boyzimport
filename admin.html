@@ -1456,15 +1456,61 @@ function renderAccesos(){
       +'<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">'
       +'<div><b>'+tipo+'</b> · '+esc(r.codigo||'—')+' <button class="btn ghost" data-cod="'+i+'" style="padding:3px 9px;font-size:.78rem">✎ código</button><br>'+esc(r.cliente_nombre||'—')+'<br><span style="color:var(--muted);font-size:.85rem">'+esc(r.estado||'')+' · '+acceso+'</span></div>'
       +'<button class="btn" data-cred="'+i+'">'+(r.cliente_usuario?'Cambiar contraseña':'Generar acceso')+'</button>'
-      +'</div>'+pend+'</div>';
+      +'</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn ghost" data-xls="'+i+'" style="padding:6px 12px;font-size:.82rem">📊 Excel del pedido</button>'
+      +(r.grupo_id?'<button class="btn ghost" data-xlsg="'+i+'" style="padding:6px 12px;font-size:.82rem">📊 Excel del grupo completo</button>':'')+'</div>'
+      +pend+'</div>';
   };
   const pendientes=ACCESOS.filter(r=>r.cambio_pendiente), resto=ACCESOS.filter(r=>!r.cambio_pendiente);
   cont.innerHTML = (pendientes.length?'<div style="font-weight:600;margin:4px 0 10px">Cambios por revisar ('+pendientes.length+')</div>'+pendientes.map(r=>card(r,ACCESOS.indexOf(r))).join(''):'')
     + '<div style="font-weight:600;margin:14px 0 10px">Todos los pedidos</div>' + resto.map(r=>card(r,ACCESOS.indexOf(r))).join('');
   cont.querySelectorAll('[data-cred]').forEach(b=>b.onclick=()=>genCred(+b.dataset.cred));
   cont.querySelectorAll('[data-cod]').forEach(b=>b.onclick=()=>genCodigo(+b.dataset.cod));
+  cont.querySelectorAll('[data-xls]').forEach(b=>b.onclick=()=>exportPedidoAdmin(+b.dataset.xls));
+  cont.querySelectorAll('[data-xlsg]').forEach(b=>b.onclick=()=>exportGrupoAdmin(+b.dataset.xlsg));
   cont.querySelectorAll('[data-aprobar]').forEach(b=>b.onclick=()=>aprobarCambio(+b.dataset.aprobar));
   cont.querySelectorAll('[data-rechazar]').forEach(b=>b.onclick=()=>rechazarCambio(+b.dataset.rechazar));
+}
+async function cargarXLSX(){
+  if(window.XLSX) return window.XLSX;
+  await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=res; s.onerror=()=>rej(new Error('cdn')); document.head.appendChild(s); });
+  return window.XLSX;
+}
+function _itemsAoa(items){
+  const filas=[['Perfume','Marca','Cantidad','Precio unit.','Subtotal']];
+  (items||[]).forEach(it=>{ const q=it.qty||1, pu=(it.precio_unit!=null?it.precio_unit:it.precio), sub=(it.subtotal!=null?it.subtotal:(pu!=null?pu*q:'')); filas.push([it.nombre||'',it.marca||'',q,pu!=null?pu:'',sub]); });
+  return filas;
+}
+async function exportPedidoAdmin(i){
+  const r=ACCESOS[i]; if(!r) return;
+  let XLSX; try{ XLSX=await cargarXLSX(); }catch(e){ alert('No se pudo cargar el exportador (revisa tu internet).'); return; }
+  const cab=[[ (r._tipo==='preorden'?'Preorden':'Consolidado')+' '+(r.codigo||'') ],['Cliente', r.cliente_nombre||''],['Teléfono', r.cliente_telefono||''],['Estado', r.estado||''],[]];
+  const filas=cab.concat(_itemsAoa(r.items),[[],['','','','Total', Number(r.total)||0]]);
+  if(r._tipo==='consolidado' && r.inversion_declarada!=null){
+    filas.push(['','','','Inversión declarada', Number(r.inversion_declarada)||0]);
+    filas.push(['','','','Restante', (Number(r.inversion_declarada)||0)-(Number(r.total)||0)]);
+  }
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filas), 'Pedido');
+  XLSX.writeFile(wb, 'pedido-'+(r.codigo||'export')+'.xlsx');
+}
+async function exportGrupoAdmin(i){
+  const r=ACCESOS[i]; if(!r||!r.grupo_id) return;
+  let XLSX; try{ XLSX=await cargarXLSX(); }catch(e){ alert('No se pudo cargar el exportador (revisa tu internet).'); return; }
+  const { data:miembros, error } = await sb.from('consolidado_pedidos').select('*').eq('grupo_id', r.grupo_id).order('created_at');
+  if(error){ alert('No se pudo leer el grupo:\n'+error.message); return; }
+  const lista=miembros||[];
+  // Hoja Resumen
+  const resumen=[['Grupo', r.codigo||''],['Campaña', r.consolidado_nombre||''],[],['Cliente','Teléfono','Estado','Inversión','Total']];
+  let totGrupo=0, invGrupo=0;
+  lista.forEach(m=>{ totGrupo+=Number(m.total)||0; invGrupo+=Number(m.inversion_declarada)||0; resumen.push([m.cliente_nombre||'',m.cliente_telefono||'',m.estado||'',Number(m.inversion_declarada)||0,Number(m.total)||0]); });
+  resumen.push([]); resumen.push(['','','TOTALES', invGrupo, totGrupo]);
+  // Hoja Detalle
+  const detalle=[['Cliente','Perfume','Marca','Cantidad','Precio unit.','Subtotal']];
+  lista.forEach(m=>{ (m.items||[]).forEach(it=>{ const q=it.qty||1, pu=(it.precio_unit!=null?it.precio_unit:it.precio), sub=(it.subtotal!=null?it.subtotal:(pu!=null?pu*q:'')); detalle.push([m.cliente_nombre||'',it.nombre||'',it.marca||'',q,pu!=null?pu:'',sub]); }); });
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumen), 'Resumen');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detalle), 'Detalle');
+  XLSX.writeFile(wb, 'grupo-'+(r.codigo||'export')+'.xlsx');
 }
 async function genCred(i){
   const r=ACCESOS[i]; if(!r) return;

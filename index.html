@@ -1157,11 +1157,10 @@ function abrirConsulta(){
   async function consultar(){
     const cod=($('#codInput').value||'').trim().toUpperCase(); if(!cod){ toast('Escribe tu código'); return; }
     $('#codResult').innerHTML='<div class="state" style="padding:20px"><div class="spinner"></div></div>';
-    let r;
-    if(cod.startsWith('PRE')) r=await sb.rpc('consultar_preorden',{cod});
-    else if(cod.startsWith('CON')||cod.startsWith('GRP')) r=await sb.rpc('consultar_consolidado',{cod});
-    else { $('#codResult').innerHTML='<div class="genero">El código debe empezar con PRE-, CON- o GRP-.</div>'; return; }
-    const row = r&&r.data&&r.data[0];
+    let row=null;
+    const rp=await sb.rpc('consultar_preorden',{cod});
+    if(rp&&rp.data&&rp.data[0]) row=rp.data[0];
+    if(!row){ const rc=await sb.rpc('consultar_consolidado',{cod}); if(rc&&rc.data&&rc.data[0]) row=rc.data[0]; }
     if(!row){ $('#codResult').innerHTML='<div class="genero">No encontramos ese código. Revísalo e intenta de nuevo.</div>'; return; }
     const est=row.estado||'pendiente'; const esGrupo=(row.tipo==='grupo');
     const txt = esGrupo ? (est==='abierto'?'Tu grupo está ABIERTO, sumando inversión. Invita a más personas para bajar el precio.':est==='cerrado'?'El grupo está cerrado. Procesamos el pedido conjunto.':'Grupo cancelado.')
@@ -1235,24 +1234,39 @@ async function mostrarMisPedidos(pre){
   const cont=$('#misPedidos');
   cont.innerHTML = pedidos.map((o,i)=>{
     const tipo = o.tipo==='preorden'?'Preorden ✈️':'Consolidado 🤝';
-    const items = (o.items||[]).map(it=>`<div style="display:flex;justify-content:space-between;gap:10px"><span>${esc(it.nombre||it.marca||'Ítem')}${it.qty?' × '+it.qty:''}</span><span>${it.precio!=null?fmt(it.precio*(it.qty||1)):(it.subtotal!=null?fmt(it.subtotal):'')}</span></div>`).join('') || '<div style="color:var(--muted)">Sin ítems.</div>';
+    const items = (o.items||[]).map(it=>{
+      const q=it.qty||1, sub=(it.subtotal!=null)?it.subtotal:((it.precio!=null||it.precio_unit!=null)?((it.precio_unit!=null?it.precio_unit:it.precio)*q):null);
+      const nom=[it.marca,it.nombre].filter(Boolean).join(' · ')||'Ítem';
+      return `<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line-soft)"><span>${esc(nom)} <span style="color:var(--muted)">× ${q}</span></span><span>${sub!=null?fmt(sub):''}</span></div>`;
+    }).join('') || '<div style="color:var(--muted)">Sin ítems.</div>';
     const comps = (o.comprobantes||[]).length;
+    const esCon = o.tipo==='consolidado';
+    const inv = Number(o.inversion_declarada)||0;
+    const tot = Number(o.total)||0;
+    const restante = inv - tot;
     return `<div style="border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--panel)">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-        <strong>${tipo}</strong><span class="est-badge ${esc(o.estado||'pendiente')}">${esc(estadoTextoCliente(o.estado))}</span>
+        <strong>${tipo}${esCon&&o.consolidado_nombre?' · '+esc(o.consolidado_nombre):''}</strong><span class="est-badge ${esc(o.estado||'pendiente')}">${esc(estadoTextoCliente(o.estado))}</span>
       </div>
-      <div class="genero" style="margin-top:4px">Código: ${esc(o.codigo||'—')}</div>
-      <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px;font-size:.9rem">${items}</div>
-      ${o.total!=null?`<div style="display:flex;justify-content:space-between;margin-top:8px;font-weight:600"><span>Total</span><span>${fmt(o.total)}</span></div>`:''}
-      <div class="genero" style="margin-top:8px">Comprobantes enviados: ${comps}</div>
+      <div class="genero" style="margin-top:4px">Código: ${esc(o.codigo||'—')}${esCon&&o.bracket_etiqueta?' · Escala '+esc(o.bracket_etiqueta):''}</div>
+      <div style="margin-top:10px;font-size:.9rem">${items}</div>
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;font-weight:600"><span>Total del pedido</span><span>${fmt(tot)}</span></div>
+        ${esCon&&inv>0?`<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Inversión que declaraste</span><span>${fmt(inv)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:600;color:${restante>=0?'var(--gold-1)':'#e6a24b'}"><span>${restante>=0?'Te queda por usar':'Te pasaste por'}</span><span>${fmt(Math.abs(restante))}</span></div>
+        <div style="height:8px;border-radius:99px;background:var(--panel-2);overflow:hidden;margin-top:2px"><div style="height:100%;width:${inv>0?Math.min(100,Math.round(tot/inv*100)):0}%;background:var(--gold-grad,var(--gold-1))"></div></div>`:''}
+      </div>
+      <div class="genero" style="margin-top:10px">Comprobantes enviados: ${comps}</div>
       ${o.tiene_cambio_pendiente?`<div style="margin-top:8px;color:var(--gold-1);font-size:.86rem">⏳ Tienes un cambio esperando aprobación.</div>`:''}
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         <button class="np" data-edit="${i}" style="padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);color:var(--gold-1)">✏️ Editar datos</button>
         <label class="np" style="padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);color:var(--gold-1);cursor:pointer">📎 Subir comprobante<input type="file" accept="image/*" data-comp="${i}" style="display:none"></label>
+        <button class="np" data-xls="${i}" style="padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);color:var(--gold-1)">📊 Exportar Excel</button>
       </div>
     </div>`;
   }).join('');
   cont.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editarPedido(pedidos[+b.dataset.edit]));
+  cont.querySelectorAll('[data-xls]').forEach(b=>b.onclick=()=>exportarPedidoExcel(pedidos[+b.dataset.xls]));
   cont.querySelectorAll('[data-comp]').forEach(inp=>inp.onchange=async e=>{
     const o=pedidos[+inp.dataset.comp], f=e.target.files[0]; if(!f) return;
     toast('Subiendo comprobante...');
@@ -1265,6 +1279,27 @@ async function mostrarMisPedidos(pre){
     mostrarMisPedidos();
   });
   $('#overlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+
+/* Cargar SheetJS solo cuando se exporta */
+async function cargarXLSX(){
+  if(window.XLSX) return window.XLSX;
+  await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=res; s.onerror=()=>rej(new Error('cdn')); document.head.appendChild(s); });
+  return window.XLSX;
+}
+async function exportarPedidoExcel(o){
+  let XLSX; try{ XLSX=await cargarXLSX(); }catch(e){ toast('No se pudo cargar el exportador'); return; }
+  const filas=[['Perfume','Marca','Cantidad','Precio unit.','Subtotal']];
+  (o.items||[]).forEach(it=>{ const q=it.qty||1, pu=(it.precio_unit!=null?it.precio_unit:it.precio), sub=(it.subtotal!=null?it.subtotal:(pu!=null?pu*q:'')); filas.push([it.nombre||'',it.marca||'',q,pu!=null?pu:'',sub]); });
+  filas.push([]);
+  filas.push(['','','','Total', Number(o.total)||0]);
+  if(o.tipo==='consolidado' && o.inversion_declarada!=null){
+    filas.push(['','','','Inversión declarada', Number(o.inversion_declarada)||0]);
+    filas.push(['','','','Restante', (Number(o.inversion_declarada)||0)-(Number(o.total)||0)]);
+  }
+  const ws=XLSX.utils.aoa_to_sheet([[ (o.tipo==='preorden'?'Preorden':'Consolidado')+' '+(o.codigo||'') ],['Cliente', o.cliente_nombre||''],[]].concat(filas));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Pedido');
+  XLSX.writeFile(wb, 'pedido-'+(o.codigo||'export')+'.xlsx');
 }
 
 function editarPedido(o){
