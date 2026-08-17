@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Administrar catálogo</title>
-<meta name="theme-color" content="#0a0a0d">
+<meta name="theme-color" content="#ffffff">
 <link rel="manifest" href="manifest-admin.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -15,13 +15,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
-  --bg:#0a0a0d; --panel:#14141b; --panel-2:#1b1b23; --line:#2a2a33; --line-soft:#1f1f27;
-  --gold-1:#f4e6b8; --gold-2:#d9b45a; --gold-3:#b8893a; --gold-deep:#8a6522;
-  --gold-grad:linear-gradient(135deg,#f4e6b8,#e6c76b 30%,#c99a3e 60%,#f4e6b8);
-  --cream:#f2ecdf; --muted:#8f8a7a; --muted-2:#6a6659; --ok:#7bd88f; --danger:#e0796b;
+  --bg:#ffffff; --panel:#f7f7f8; --panel-2:#ededf0; --line:#e4e4e8; --line-soft:#ededf0;
+  --gold-1:#141416; --gold-2:#141416; --gold-3:#3b3b40; --gold-deep:#d6d6da;
+  --gold-grad:#141416;
+  --cream:#141416; --muted:#6c6c74; --muted-2:#a0a0a8; --ok:#12904a; --danger:#c0392b;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:radial-gradient(1000px 520px at 50% -12%, var(--panel) 0%, transparent 60%), var(--bg); color:var(--cream); font-family:'Jost',system-ui,sans-serif; min-height:100vh}
+body{background:var(--bg); color:var(--cream); font-family:'Jost',system-ui,sans-serif; min-height:100vh}
 button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit}
 input,select,textarea{font-family:inherit; width:100%; background:var(--panel-2); border:1px solid var(--line); border-radius:9px; color:var(--cream); padding:10px 12px; font-size:.9rem; outline:none}
 input:focus,select,textarea:focus{border-color:var(--gold-3)}
@@ -34,7 +34,7 @@ img{display:block;max-width:100%}
 .login h1{font-family:'Cinzel',serif; text-align:center; margin-bottom:6px; font-size:1.4rem}
 .login p{text-align:center; color:var(--muted); font-size:.85rem; margin-bottom:22px}
 .login .field{margin-bottom:14px}
-.btn{background:var(--gold-grad); color:#0a0a0d; font-weight:600; padding:12px 18px; border-radius:10px; font-size:.9rem}
+.btn{background:var(--gold-grad); color:#fff; font-weight:600; padding:12px 18px; border-radius:10px; font-size:.9rem}
 .btn:hover{filter:brightness(1.05)}
 .btn.full{width:100%}
 .btn.ghost{background:var(--panel-2); border:1px solid var(--line); color:var(--cream); font-weight:500}
@@ -47,7 +47,7 @@ img{display:block;max-width:100%}
 .bar h2{font-family:'Cormorant Garamond',serif; font-size:1.7rem; margin-right:auto}
 .tabs{display:flex; gap:6px; background:var(--panel); padding:4px; border-radius:12px}
 .tab{padding:9px 16px; border-radius:9px; color:var(--muted); font-size:.86rem}
-.tab.active{background:var(--gold-grad); color:#0a0a0d; font-weight:500}
+.tab.active{background:var(--gold-grad); color:#fff; font-weight:500}
 
 .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
 .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px}

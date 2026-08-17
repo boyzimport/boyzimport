@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Catálogo — Decants de Perfumes</title>
-<meta name="theme-color" content="#0a0a0d">
+<meta name="theme-color" content="#ffffff">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -17,17 +17,18 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
-  --bg:#0a0a0d; --bg-2:#101015; --panel:#14141b; --panel-2:#1b1b23;
-  --line:#2a2a33; --line-soft:#1f1f27;
-  --gold-1:#f4e6b8; --gold-2:#d9b45a; --gold-3:#b8893a; --gold-deep:#8a6522;
-  --gold-grad:linear-gradient(135deg,#f4e6b8 0%,#e6c76b 30%,#c99a3e 60%,#f4e6b8 100%);
-  --cream:#f2ecdf; --muted:#8f8a7a; --muted-2:#6a6659;
-  --ok:#7bd88f; --danger:#e0796b; --wa:#25D366; --yape:#7c3aed;
-  --radius:14px; --radius-lg:20px; --shadow:0 20px 60px rgba(0,0,0,.5);
+  --bg:#ffffff; --bg-2:#f2f2f4; --panel:#f7f7f8; --panel-2:#ededf0;
+  --line:#e4e4e8; --line-soft:#ededf0;
+  --gold-1:#141416; --gold-2:#141416; --gold-3:#3b3b40; --gold-deep:#d6d6da;
+  --gold-grad:#141416;
+  --cream:#141416; --muted:#6c6c74; --muted-2:#a0a0a8;
+  --accent:#f5c518; --accent-deep:#e2ad00;
+  --ok:#12904a; --danger:#c0392b; --wa:#25D366; --yape:#7c3aed;
+  --radius:12px; --radius-lg:18px; --shadow:0 18px 50px rgba(20,20,25,.14);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{background:radial-gradient(1200px 620px at 50% -12%, var(--panel) 0%, transparent 62%), var(--bg);
+body{background:var(--bg);
   color:var(--cream); font-family:'Jost',system-ui,sans-serif; min-height:100vh; -webkit-font-smoothing:antialiased;}
 img{display:block; max-width:100%}
 button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit}
@@ -344,6 +345,72 @@ header::after{content:""; position:absolute; left:0; right:0; bottom:0; height:1
 .grp-item button{background:var(--gold-2);color:#06121d;border:0;border-radius:9px;padding:9px 13px;font-weight:700;cursor:pointer;white-space:nowrap}
 .con-back{background:none;border:0;color:var(--gold-2);cursor:pointer;font-size:.9rem;padding:2px 0 6px;font-weight:600}
 .add-cta.ghost{background:var(--panel-2);color:var(--gold-1);border:1px solid var(--line)}
+/* =====================================================================
+   TEMA CLARO estilo LOOVI — ajustes sobre el diseño base
+   ===================================================================== */
+::selection{background:var(--accent); color:#141416}
+header{background:rgba(255,255,255,.9); border-bottom:1px solid var(--line)}
+header::after{background:var(--line); opacity:1}
+.brand .word{font-family:'Cinzel',serif; color:var(--cream); font-weight:700; letter-spacing:.12em}
+.cart-btn svg{stroke:var(--cream)}
+.cart-btn:hover{border-color:var(--cream)}
+.cart-count{background:var(--cream)!important; color:#fff!important}
+.search svg{stroke:var(--muted)}
+
+/* Banner de envíos (marquee) */
+.marquee{background:var(--cream); color:#fff; overflow:hidden; white-space:nowrap}
+.marquee .mq-track{display:inline-block; padding:11px 0; animation:mqscroll 26s linear infinite; font-size:.78rem; letter-spacing:.16em; font-weight:600; text-transform:uppercase; will-change:transform}
+.marquee .mq-track span{padding:0 30px}
+@keyframes mqscroll{from{transform:translateX(0)} to{transform:translateX(-50%)}}
+
+/* Nav de secciones estilo tienda */
+.viewtabs{border-bottom:1px solid var(--line); gap:26px; justify-content:center; padding:0 20px; margin-top:14px; flex-wrap:wrap}
+.vtab{background:none!important; border:none!important; border-radius:0!important; color:var(--muted); text-transform:uppercase; letter-spacing:.13em; font-size:.76rem; font-weight:500; padding:12px 2px; position:relative; transition:color .2s}
+.vtab:hover{color:var(--cream)}
+.vtab.active{color:var(--cream)!important; font-weight:700; background:none!important}
+.vtab.active::after{content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--cream)}
+.vtab .fire{margin-left:6px}
+
+/* Chips de filtro */
+.chip{border-radius:999px}
+.chip:hover{color:var(--cream); border-color:var(--cream)}
+.chip.active{color:#fff; background:var(--cream); border-color:var(--cream)}
+
+/* Tarjetas de producto — tiles gris claro estilo LOOVI */
+.card{background:#fff!important; border:1px solid var(--line)!important; border-radius:10px!important; box-shadow:none!important}
+.card:hover{transform:translateY(-3px); box-shadow:0 12px 30px rgba(20,20,25,.10)!important; border-color:var(--line)!important}
+.card .imgwrap{background:var(--bg-2)!important}
+.card .ver{border-color:var(--line)}
+.card:hover .ver{background:var(--cream); color:#fff; border-color:var(--cream)}
+
+/* Badges */
+.badge-oferta{background:var(--accent)!important; color:#141416!important; border:none!important; font-weight:800; letter-spacing:.06em}
+.badge-con{background:var(--accent)!important; color:#141416!important; border:none!important; font-weight:800}
+.badge-dest{background:var(--cream)!important; color:#fff!important; border-color:var(--cream)!important}
+.badge-pre{background:var(--cream)!important; color:#fff!important; border-color:var(--cream)!important}
+.stock-modal.low{color:var(--cream); border-color:var(--accent-deep); background:rgba(245,197,24,.16)}
+
+/* Botones tipo pill negro */
+.add-cta{border-radius:999px!important; color:#fff!important}
+.add-cta.ghost{background:#fff!important; color:var(--cream)!important; border:1px solid var(--line)!important}
+.grp-item button{background:var(--cream)!important; color:#fff!important}
+.con-back{color:var(--cream)!important}
+
+/* Hero más sobrio */
+.hero h1{font-weight:700}
+.eyebrow{color:var(--muted)}
+.eyebrow::before{background:linear-gradient(90deg,var(--muted),transparent)}
+
+/* Tabla de precios del consolidado */
+.con-table td.agot,.agot-tag,.con-row .cr-precio,.con-sum .cell b,.con-table thead th{color:var(--cream)}
+.con-table td.agot,.agot-tag{color:var(--danger)}
+
+/* ===== Cantidad editable con números ===== */
+.stepper input.qv{width:52px; text-align:center; background:#fff; border:1px solid var(--line); border-radius:8px; color:var(--cream); font-size:1rem; padding:6px 4px; font-family:inherit; -moz-appearance:textfield}
+.stepper.sm input.qv{width:44px; font-size:.92rem; padding:5px 3px}
+.stepper input.qv::-webkit-outer-spin-button,.stepper input.qv::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+.qty input.qv{width:46px; text-align:center; background:#fff; border:1px solid var(--line); border-radius:7px; color:var(--cream); font-size:.92rem; padding:4px 3px; font-family:inherit; -moz-appearance:textfield}
+.qty input.qv::-webkit-outer-spin-button,.qty input.qv::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
 </style>
 </head>
 <body>
@@ -366,6 +433,8 @@ header::after{content:""; position:absolute; left:0; right:0; bottom:0; height:1
     </button>
   </div>
 </header>
+
+<div class="marquee" id="marquee"></div>
 
 <section class="hero">
   <div class="hero-copy">
@@ -417,7 +486,9 @@ header::after{content:""; position:absolute; left:0; right:0; bottom:0; height:1
 /* Aplica los colores de CONFIG.TEMA sobre las variables del diseño */
 (function(){ if(!window.CONFIG||!CONFIG.TEMA) return; var t=CONFIG.TEMA, r=document.documentElement;
   Object.keys(t).forEach(function(k){ if(t[k]) r.style.setProperty('--'+k, t[k]); });
-  if(!t['gold-grad'] && t['gold-1'] && t['gold-3'])
+  // gold-grad: si el tema define uno, se usa; si no, se arma con los tonos (paletas doradas antiguas)
+  if(t['gold-grad']) r.style.setProperty('--gold-grad', t['gold-grad']);
+  else if(t['gold-1'] && t['gold-3'])
     r.style.setProperty('--gold-grad','linear-gradient(135deg,'+t['gold-1']+' 0%,'+(t['gold-2']||t['gold-3'])+' 30%,'+t['gold-3']+' 60%,'+t['gold-1']+' 100%)');
   var m=document.querySelector('meta[name="theme-color"]'); if(m&&t['bg']) m.setAttribute('content', t['bg']);
 })();
@@ -440,6 +511,13 @@ const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;',
 $('#brand').innerHTML = CONFIG.LOGO_URL ? `<img src="${CONFIG.LOGO_URL}" alt="${esc(CONFIG.TIENDA_NOMBRE)}" onerror="this.outerHTML='&lt;span class=\\'word gold-text\\'&gt;${esc(CONFIG.TIENDA_NOMBRE)}&lt;/span&gt;'">` : `<span class="word gold-text">${esc(CONFIG.TIENDA_NOMBRE)}</span>`;
 $('#tagline').textContent = CONFIG.TIENDA_TAGLINE || '';
 $('#heroTitle').textContent = CONFIG.TIENDA_NOMBRE;
+/* Banner de envíos (marquee) */
+(function(){ const m=$('#marquee'); if(!m) return;
+  const txt=(CONFIG.BANNER_ENVIO || CONFIG.ENVIO_TEXTO || '').trim();
+  if(!txt){ m.style.display='none'; return; }
+  const uno=`<span>${esc(txt)}</span><span>◆</span>`;
+  m.innerHTML=`<div class="mq-track">${uno.repeat(8)}</div>`;
+})();
 if(CONFIG.HERO_SUB) $('#heroSub').textContent = CONFIG.HERO_SUB;
 (function(){ const orn=$('#heroOrn'); if(!orn) return;
   const w=(CONFIG.TIENDA_NOMBRE||'').trim().split(/\s+/).filter(Boolean);
@@ -700,7 +778,7 @@ function openPre(id){
 
         ${max>0?`
         <div class="section-t">Cantidad</div>
-        <div class="qty-pick"><div class="stepper"><button id="qMinus">−</button><span id="qVal">${qty}</span><button id="qPlus">+</button></div><span style="color:var(--muted);font-size:.85rem" id="qTot">${fmt(precio*qty)}</span></div>
+        <div class="qty-pick"><div class="stepper"><button id="qMinus">−</button><input class="qv" id="qVal" type="number" min="1" max="${max}" inputmode="numeric" value="${qty}"><button id="qPlus">+</button></div><span style="color:var(--muted);font-size:.85rem" id="qTot">${fmt(precio*qty)}</span></div>
 
         <div class="section-t">Tu comprobante de pago</div>
         <div class="pay-up">
@@ -723,9 +801,12 @@ function openPre(id){
 
     $('#closeSheet').onclick = closeProduct;
     if(max>0){
-      const refresh=()=>{ $('#qVal').textContent=qty; $('#qTot').textContent=fmt(precio*qty); $('#preSend').textContent=`Reservar mi preorden · ${fmt(precio*qty)}`; };
+      const qEl=$('#qVal');
+      const refresh=()=>{ if(qEl) qEl.value=qty; $('#qTot').textContent=fmt(precio*qty); $('#preSend').textContent=`Reservar mi preorden · ${fmt(precio*qty)}`; };
       $('#qMinus').onclick=()=>{ qty=Math.max(1,qty-1); refresh(); };
       $('#qPlus').onclick =()=>{ qty=Math.min(max,qty+1); if(qty===max) toast('Es el máximo de cupos disponibles'); refresh(); };
+      if(qEl){ qEl.oninput=()=>{ let v=parseInt((qEl.value||'').replace(/[^\d]/g,''),10); if(isNaN(v))v=0; if(v>max){ v=max; qEl.value=max; toast('Es el máximo de cupos disponibles'); } qty=Math.max(1,v||1); $('#qTot').textContent=fmt(precio*qty); $('#preSend').textContent=`Reservar mi preorden · ${fmt(precio*qty)}`; };
+        qEl.onblur=()=>{ qEl.value=qty; }; }
       function drawThumbs(){ $('#preThumbs').innerHTML=files.map((u,i)=>`<div class="pt"><img src="${esc(u.url)}"><button data-rm="${i}">×</button></div>`).join('');
         $('#preThumbs').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ files.splice(+b.dataset.rm,1); drawThumbs(); }); }
       $('#preFiles').onchange = async e => { const fs=[...e.target.files]; if(!fs.length)return; toast('Subiendo comprobante...');
@@ -826,9 +907,9 @@ function openCon(id){
     const it=its[i]; const bi=bIdxActual(); const q=st.cart[i]||0; const precio=precioItem(c,i,bi); const ag=itemAgotado(it);
     return `<div class="con-row ${ag?'agot':''}">
       <div class="cr-info"><b>${esc(it.nombre||'')}</b><span>${esc(it.marca||'')}${(it.stock!=null&&!ag)?` · stock ${it.stock}`:''}</span></div>
-      <div class="cr-precio">${ag?'<span class="agot-tag">AGOTADO</span>':fmt(precio)}</div>
-      ${ag?'<div></div>':`<div class="stepper sm"><button data-cm="${i}">−</button><span>${q}</span><button data-cp="${i}">+</button></div>`}
-      <div class="cr-sub">${(q>0&&!ag)?fmt(precio*q):''}</div>
+      <div class="cr-precio" data-price="${i}">${ag?'<span class="agot-tag">AGOTADO</span>':fmt(precio)}</div>
+      ${ag?'<div></div>':`<div class="stepper sm"><button data-cm="${i}">−</button><input class="qv" type="number" min="0" inputmode="numeric" data-cq="${i}" value="${q}"><button data-cp="${i}">+</button></div>`}
+      <div class="cr-sub" data-sub="${i}">${(q>0&&!ag)?fmt(precio*q):''}</div>
     </div>`;
   }
 
@@ -921,7 +1002,7 @@ function openCon(id){
         <div class="cell"><small>Tu total</small><b id="sumTotal">${fmt(r.t)}</b></div>
         <div class="cell"><small>Inversión declarada</small><b>${fmt(Number(st.inversion)||0)}</b></div>
         <div class="cell"><small>Modelos elegidos</small><b id="sumMods" style="color:${r.mods>=minMod?'var(--gold-1)':'#e6a24b'}">${r.mods} / ${minMod}</b></div>
-        <div class="cell"><small>Diferencia vs. inversión</small><b>${fmt(r.t-(Number(st.inversion)||0))}</b></div>
+        <div class="cell"><small>Diferencia vs. inversión</small><b id="sumDif">${fmt(r.t-(Number(st.inversion)||0))}</b></div>
       </div>
 
       <div class="section-t">Comprobante de pago (opcional)</div>
@@ -946,8 +1027,21 @@ function openCon(id){
     $('#closeSheet').onclick=closeProduct;
     $('#back').onclick=()=>{ if(esGrupo){ st.pantalla='grupos'; } else { st.pantalla='inicio'; st.modo=null; } render(); };
     const inv=$('#inv'); if(inv){ inv.onchange=()=>{ st.inversion=inv.value; render(); }; }
-    document.querySelectorAll('#perfList [data-cp]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.cp; st.cart[i]=(st.cart[i]||0)+1; render(); });
-    document.querySelectorAll('#perfList [data-cm]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.cm; st.cart[i]=Math.max(0,(st.cart[i]||0)-1); render(); });
+    function recomputeCon(){
+      const bi=bIdxActual(); let t=0, mods=0;
+      its.forEach((it,i)=>{ if(itemAgotado(it)) return; const q=st.cart[i]||0; const precio=precioItem(c,i,bi);
+        const subEl=$('#perfList [data-sub="'+i+'"]'); if(subEl) subEl.textContent=(q>0)?fmt(precio*q):'';
+        const prEl=$('#perfList [data-price="'+i+'"]'); if(prEl) prEl.textContent=fmt(precio);
+        if(q>0){ t+=precio*q; mods++; } });
+      const inv2=Number(st.inversion)||0;
+      const stt=$('#sumTotal'); if(stt) stt.textContent=fmt(t);
+      const sm=$('#sumMods'); if(sm){ sm.textContent=mods+' / '+minMod; sm.style.color=(mods>=minMod?'var(--gold-1)':'#e6a24b'); }
+      const sd=$('#sumDif'); if(sd) sd.textContent=fmt(t-inv2);
+      const cs=$('#conSend'); if(cs) cs.textContent=`${esGrupo?'Solicitar unirme al grupo':'Enviar mi pedido'} · ${fmt(t)}`;
+    }
+    document.querySelectorAll('#perfList [data-cp]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.cp; st.cart[i]=(st.cart[i]||0)+1; const inp=$('#perfList [data-cq="'+i+'"]'); if(inp) inp.value=st.cart[i]; recomputeCon(); });
+    document.querySelectorAll('#perfList [data-cm]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.cm; st.cart[i]=Math.max(0,(st.cart[i]||0)-1); const inp=$('#perfList [data-cq="'+i+'"]'); if(inp) inp.value=st.cart[i]; recomputeCon(); });
+    document.querySelectorAll('#perfList [data-cq]').forEach(inp=>{ inp.oninput=()=>{ const i=+inp.dataset.cq; let v=parseInt((inp.value||'').replace(/[^\d]/g,''),10); if(isNaN(v)||v<0)v=0; st.cart[i]=v; recomputeCon(); }; inp.onblur=()=>{ const i=+inp.dataset.cq; inp.value=st.cart[i]||0; }; });
     function drawThumbs(){ $('#conThumbs').innerHTML=st.files.map((u,i)=>`<div class="pt"><img src="${esc(u.url)}"><button data-rm="${i}">×</button></div>`).join('');
       $('#conThumbs').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ st.files.splice(+b.dataset.rm,1); drawThumbs(); }); }
     drawThumbs();
@@ -1248,7 +1342,7 @@ function openCombo(id){
 
       <div class="combo-qty">
         <span class="lbl">Cantidad</span>
-        <div class="stepper"><button id="cqMinus">−</button><span id="cqVal">1</span><button id="cqPlus">+</button></div>
+        <div class="stepper"><button id="cqMinus">−</button><input class="qv" id="cqVal" type="number" min="1" inputmode="numeric" value="1"><button id="cqPlus">+</button></div>
       </div>
 
       <div class="envio">
@@ -1274,8 +1368,9 @@ function openCombo(id){
     const m=$('#mainImg'); if(m) m.src=t.dataset.img;
     document.querySelectorAll('.gthumb').forEach(x=>x.classList.remove('active')); t.classList.add('active');
   });
-  $('#cqMinus').onclick=()=>{ comboQty=Math.max(1,comboQty-1); $('#cqVal').textContent=comboQty; refreshComboTotal(); };
-  $('#cqPlus').onclick =()=>{ comboQty++; $('#cqVal').textContent=comboQty; refreshComboTotal(); };
+  $('#cqMinus').onclick=()=>{ comboQty=Math.max(1,comboQty-1); $('#cqVal').value=comboQty; refreshComboTotal(); };
+  $('#cqPlus').onclick =()=>{ comboQty++; $('#cqVal').value=comboQty; refreshComboTotal(); };
+  (function(){ const el=$('#cqVal'); if(!el) return; el.oninput=()=>{ let v=parseInt((el.value||'').replace(/[^\d]/g,''),10); if(isNaN(v)||v<1)v=1; comboQty=v; refreshComboTotal(); }; el.onblur=()=>{ el.value=comboQty; }; })();
   $('#addComboBtn').onclick = addComboToCart;
   $('#closeSheet').onclick = closeProduct;
   // auto-selecciona la talla "más vendido" si existe, si no la primera
@@ -1387,7 +1482,7 @@ function renderCart(){
         <div class="n">${esc(i.nombre)}</div>
         <div class="m">${esc(i.marca||'')} · ${mlLabel(i.ml)}</div>
         <div class="pr">${i.unit<i.unitOrig?`<span class="antes" style="color:var(--muted-2);text-decoration:line-through;margin-right:5px">${fmt(i.unitOrig)}</span>`:''}${fmt(i.unit)}${i.promo?` <span style="color:var(--ok);font-size:.72rem">· ${esc(i.promo)}</span>`:''}</div>
-        <div class="qty"><button data-dec="${i.key}">−</button><span>${i.qty}</span><button data-inc="${i.key}">+</button></div>
+        <div class="qty"><button data-dec="${i.key}">−</button><input class="qv" type="number" min="1" inputmode="numeric" data-qset="${i.key}" value="${i.qty}"><button data-inc="${i.key}">+</button></div>
       </div>
       <button class="rm" data-rm="${i.key}">Quitar</button>
     </div>`;
@@ -1421,6 +1516,7 @@ function renderCart(){
 
   $('#cartList').querySelectorAll('[data-inc]').forEach(b=>b.onclick=()=>chgQty(b.dataset.inc,1));
   $('#cartList').querySelectorAll('[data-dec]').forEach(b=>b.onclick=()=>chgQty(b.dataset.dec,-1));
+  $('#cartList').querySelectorAll('[data-qset]').forEach(inp=>inp.onchange=()=>setQty(inp.dataset.qset, inp.value));
   $('#cartList').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{CART=CART.filter(i=>i.key!==b.dataset.rm); saveCart();});
   $('#cartList').querySelectorAll('[data-giftadd]').forEach(b=>b.onclick=()=>addGift(b.dataset.giftadd));
 
@@ -1452,6 +1548,11 @@ function renderCart(){
 function chgQty(key,d){ const i=CART.find(x=>x.key===key); if(!i)return;
   if(d>0){ const p=PROD_BY_ID[i.id]; const s=p?stockDe(p):null; if(s!=null && qtyEnCarrito(i.id)>=s){ toast('No hay más stock disponible'); return; } }
   i.qty+=d; if(i.qty<1)CART=CART.filter(x=>x.key!==key); saveCart(); }
+function setQty(key,val){ const i=CART.find(x=>x.key===key); if(!i)return;
+  let v=parseInt((''+val).replace(/[^\d]/g,''),10); if(isNaN(v)||v<1)v=1;
+  const p=PROD_BY_ID[i.id]; const s=p?stockDe(p):null;
+  if(s!=null){ const otros=qtyEnCarrito(i.id)-i.qty; if(otros+v>s){ v=Math.max(1,s-otros); toast('Ajustado al stock disponible'); } }
+  i.qty=v; saveCart(); }
 function openCart(){ renderCart(); $('#drawer').classList.add('open'); document.body.style.overflow='hidden'; }
 function closeCart(){ $('#drawer').classList.remove('open'); document.body.style.overflow=''; }
 $('#openCart').onclick = openCart;
