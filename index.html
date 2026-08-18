@@ -905,7 +905,15 @@ function openCon(id){
   const st={ pantalla:'inicio', modo:null, grupoSel:null, inversion:'', cart:{}, files:[], grupos:[], nuevo:{nombre:'',meta:Number(c.meta_grupo)||0,lnombre:'',ltel:''} };
 
   function montoBaseGrupo(){ return (st.modo==='grupo' && st.grupoSel && st.grupoSel!=='nuevo') ? (Number(st.grupoSel.total)||0) : 0; }
-  function bIdxActual(){ const monto = (st.modo==='grupo') ? (montoBaseGrupo()+(Number(st.inversion)||0)) : (Number(st.inversion)||0); return bracketIdxDe(c, monto); }
+  function bIdxActual(){
+    let monto;
+    if(st.modo==='grupo'){
+      const base = montoBaseGrupo()+(Number(st.inversion)||0);
+      const meta = Number(st.grupoSel && st.grupoSel.meta)||0;
+      monto = Math.max(meta, base);
+    } else { monto = Number(st.inversion)||0; }
+    return bracketIdxDe(c, monto);
+  }
   function resumen(){ let t=0, mods=0, unid=0; const bi=bIdxActual(); Object.keys(st.cart).forEach(k=>{ const q=st.cart[k]||0; if(q>0){ t+=precioItem(c,+k,bi)*q; mods++; unid+=q; } }); return {t,mods,unid}; }
   function etiquetaActual(){ const bi=bIdxActual(); return bi>=0 && bs[bi] ? bs[bi].etiqueta : ''; }
 
@@ -1066,17 +1074,23 @@ function openCon(id){
       <div class="section-t">Crear un grupo nuevo</div>
       <div class="miniform">
         <input id="gNombre" placeholder="Nombre del grupo *" value="${esc(st.nuevo.nombre)}">
-        <input id="gMeta" type="number" inputmode="numeric" placeholder="Meta de inversión (ej. 200000)" value="${st.nuevo.meta||''}">
+        <label style="font-size:.85rem;color:var(--muted);margin-top:4px">¿A qué escala de precios quieren apuntar? Todos en el grupo tendrán ese precio.</label>
+        <select id="gMeta" style="background:var(--panel);border:1px solid var(--line);border-radius:8px;color:var(--cream);padding:10px 11px;font-family:inherit;width:100%">
+          <option value="">Según lo que junten (sin meta fija)</option>
+          ${bs.map(b=>`<option value="${b.umbral}" ${Number(st.nuevo.meta)===Number(b.umbral)?'selected':''}>${esc(b.etiqueta||('Escala '+fmt(b.umbral)))} — desde ${fmt(b.umbral)}</option>`).join('')}
+        </select>
         <input id="gLnombre" placeholder="Tu nombre (líder) *" value="${esc(st.nuevo.lnombre)}">
         <input id="gLtel" placeholder="Tu teléfono / WhatsApp *" inputmode="tel" value="${esc(st.nuevo.ltel)}">
       </div>
-      <button class="add-cta" id="crearGrupo">Crear grupo y armar mi pedido</button>
+      <div class="genero" style="font-size:.82rem;margin-top:6px">Si al final no llegan a esa inversión, el dueño ajustará la escala al precio que corresponda y podrán editar sus pedidos.</div>
+      <button class="add-cta" id="crearGrupo" style="margin-top:10px">Crear grupo y armar mi pedido</button>
     </div>`;
     $('#closeSheet') && ($('#closeSheet').onclick=closeProduct);
     $('#back').onclick=()=>{ st.pantalla='inicio'; st.modo=null; render(); };
     document.querySelectorAll('#grpList [data-join]').forEach(b=>b.onclick=()=>{ st.grupoSel=st.grupos[+b.dataset.join]; st.pantalla='pedido'; render(); });
-    const nb={gNombre:'nombre',gMeta:'meta',gLnombre:'lnombre',gLtel:'ltel'};
+    const nb={gNombre:'nombre',gLnombre:'lnombre',gLtel:'ltel'};
     Object.keys(nb).forEach(idc=>{ const el=document.getElementById(idc); if(el) el.oninput=()=>st.nuevo[nb[idc]]=el.value; });
+    const gm=$('#gMeta'); if(gm) gm.onchange=()=>{ st.nuevo.meta=gm.value; };
     $('#crearGrupo').onclick=crearGrupo;
   }
   async function crearGrupo(){
