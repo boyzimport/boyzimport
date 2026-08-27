@@ -42,13 +42,26 @@ const CONFIG = {
   // --- Texto de env\u00edo que se muestra en el producto ---
   ENVIO_TEXTO: "Env\u00edos a todo el Per\u00fa \u00b7 coordinamos por WhatsApp",
 
+  // --- Entrega: recojo en tienda vs env\u00edo a todo el Per\u00fa (Shalom) ---
+  //  Se muestra como 2 botones en el carrito y en la preorden.
+  RECOJO_NOMBRE: "Santa Anita \u2013 Lima",
+  RECOJO_LABEL: "Recojo en Santa Anita",
+  ENVIO_LABEL: "Env\u00edo a todo el Per\u00fa",
+  COURIER_NOMBRE: "Shalom",
+
+  // --- Precio por mayor en el CAT\u00c1LOGO: topes fijos por producto (3/6/12/24). ---
+  //  M\u00e1s de esta cantidad de un mismo perfume: se le pide al cliente coordinar por WhatsApp.
+  MAYOR_TOPE_CATALOGO: 24,
+  //  M\u00e1s de esta cantidad en un mismo perfume de PREORDEN: coordinar por WhatsApp.
+  MAYOR_TOPE_PREORDEN: 1000,
+
   // --- Banner (cinta) superior en movimiento. ---
   //  Puede ser UN texto  ->  "ENV\u00cdOS A TODO EL PER\u00da"
   //  o una LISTA de frases (rotan separadas por \u25c6). Deja "" o [] para ocultarlo.
   BANNER_ENVIO: [
-    "ENV\u00cdOS A TODO EL PER\u00da",
-    "DELIVERY GRATIS DESDE S/. 200",
-    "PREVENTA Y CONSOLIDADOS ABIERTOS",
+    "ENV\u00cdO A TODO EL PER\u00da",
+    "PRECIO POR MAYOR DESDE 3 UNIDADES",
+    "PEDIDOS POR WHATSAPP",
   ],
 
   // --- Texto de la PANTALLA DE CARGA (estilo elegante). ---
