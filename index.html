@@ -455,7 +455,7 @@ header::after{background:var(--line); opacity:1}
 <div class="divider"><span></span>◆<span></span></div>
 
 <div class="viewtabs" id="viewtabs" style="display:none">
-  <button class="vtab active" data-view="catalogo">Catálogo</button>
+  <button class="vtab active" data-view="catalogo">Precio Unitario</button>
   <button class="vtab" data-view="mayor" id="tabMayor" style="display:none">Precio por mayor<span class="fire">📦</span></button>
   <button class="vtab" data-view="promos" id="tabPromos" style="display:none">Promociones<span class="fire">🔥</span></button>
   <button class="vtab" data-view="preorden" id="tabPre" style="display:none">Preorden<span class="fire">✈️</span></button>
@@ -680,10 +680,11 @@ function precioTierProducto(p, qty){
   return best;
 }
 function tierCapDe(p){ return tiersDe(p).length ? MAYOR_TOPE_CAT : null; }
-/* Base efectiva de un ítem: 1) tramo por producto si existe, 2) mayor global (compatibilidad), 3) precio de lista */
+/* Base efectiva de un ítem: 1) tramo por producto según el TOTAL de unidades del carrito
+   (así, aunque sean perfumes distintos, todos suben de tramo juntos), 2) mayor global (compat), 3) precio de lista */
 function baseItem(i){
   const p = PROD_BY_ID[i.id];
-  if(p){ const t = precioTierProducto(p, i.qty); if(t!=null) return t; }
+  if(p){ const t = precioTierProducto(p, unidadesCarrito()); if(t!=null) return t; }
   const may=precioMayDe(i); return (mayorActivo()&&may>0)?may:Number(i.precio);
 }
 /* Carrito con los precios base ya ajustados a mayorista, para el motor de promos */
@@ -789,7 +790,7 @@ function setView(v){
   $('#grid').style.display        = v==='catalogo' ? 'grid' : 'none';
   $('#mayorGrid').style.display   = v==='mayor'    ? 'grid' : 'none';
   $('#combosGrid').style.display  = v==='promos'   ? 'grid' : 'none';
-  $('#preGrid').style.display     = v==='preorden' ? 'grid' : 'none';
+  $('#preGrid').style.display     = v==='preorden' ? 'block' : 'none';
   $('#conGrid').style.display     = v==='consolidado' ? 'grid' : 'none';
   if(v==='mayor') renderMayor();
   else if(v==='promos') renderCombos();
@@ -802,23 +803,20 @@ function setView(v){
 function renderMayor(){
   const cont=$('#mayorGrid'); if(!cont) return;
   const banner = `<div class="state" style="grid-column:1/-1;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;line-height:1.6">
-    📦 <b>${esc(CONFIG.LABEL_MAYORISTA||'Precio por mayor')}</b> — Lleva <b>${MAYOR_MIN}</b> perfumes o más (sumando modelos, en un solo pedido) y el catálogo te cobra el precio por mayor <b>automáticamente</b>. Estos son los productos con precio especial.</div>`;
-  const withMay = PRODUCTS.filter(p => presActivas(p).some(x=>Number(x.precio_may)>0));
+    📦 <b>${esc(CONFIG.LABEL_MAYORISTA||'Precio por mayor')}</b> — Estos son los productos con precio especial por cantidad. Aumenta la cantidad en cualquier perfume (aunque sean modelos distintos) y el precio de todos baja <b>automáticamente</b> en tu carrito.</div>`;
+  const withMay = PRODUCTS.filter(p => tiersDe(p).length>0);
   const list = withMay.filter(p => !query || ((p.nombre||'')+' '+(p.marca||'')).toLowerCase().includes(query));
   if(!list.length){ cont.innerHTML = banner + `<div class="state">Aún no hay productos con precio por mayor.</div>`; return; }
   cont.innerHTML = banner + list.map(p=>{
     const main=imgsOf(p)[0]; const pres=presActivas(p);
-    const conMay=pres.filter(x=>Number(x.precio_may)>0);
-    const may=Math.min(...conMay.map(x=>Number(x.precio_may)));
-    const uni=Math.min(...pres.map(x=>Number(x.precio)));
+    const uni=pres.length?Math.min(...pres.map(x=>Number(x.precio))):(Number(p.precio)||0);
     return `<button class="card" data-id="${p.id}">
       <span class="badge-pre" style="background:#2f80c9">Por mayor 📦</span>
       <div class="imgwrap">${main?`<img src="${esc(main)}" alt="${esc(p.nombre)}" loading="lazy">`:`<span class="ph">${esc((p.nombre||'?')[0])}</span>`}</div>
       <div class="body">
         <span class="marca">${esc(p.marca||'')}</span>
         <span class="nombre">${esc(p.nombre)}</span>
-        <span class="escala-mini">Unidad desde ${fmt(uni)}</span>
-        <div class="foot"><span class="precio"><small>Por mayor desde</small><b>${fmt(may)}</b></span><span class="ver">→</span></div>
+        <div class="foot"><span class="precio"><small>Precio</small><b>${fmt(uni)}</b></span><span class="ver">→</span></div>
       </div></button>`;
   }).join('');
   cont.querySelectorAll('.card').forEach(c=>c.onclick=()=>openProduct(c.dataset.id));
@@ -856,30 +854,29 @@ function cupoRestante(p){ if(p.cupo==null||p.cupo==='') return null; return Math
 function renderPre(){
   const list = PREORDENES.filter(p => !query || ((p.nombre||'')+' '+(p.marca||'')).toLowerCase().includes(query));
   if(!list.length){ $('#preGrid').innerHTML = `<div class="state">No hay perfumes en preventa por ahora.</div>`; return; }
-  const banner = `<button class="card" id="armarPreBtn" style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:var(--gold-grad);border:none">
-    <span style="color:#fff;font-weight:700;font-family:'Cormorant Garamond',serif;font-size:1.15rem">🧾 Arma tu preorden completa (${list.length} perfume${list.length!==1?'s':''})</span>
-    <span style="color:#fff;font-size:1.2rem">→</span>
-  </button>`;
-  $('#preGrid').innerHTML = banner + list.map(p => {
-    const main = imgsOf(p)[0]; const rest = cupoRestante(p);
-    const full = rest!=null && rest<=0;
-    return `<button class="card ${full?'agotado':''}" data-pre="${p.id}">
-      <span class="badge-pre">Preventa ✈️</span>
-      <div class="imgwrap">${main ? `<img src="${esc(main)}" alt="${esc(p.nombre)}" loading="lazy">` : `<span class="ph">${esc((p.marca||p.nombre||'?')[0])}</span>`}</div>
-      <div class="body">
-        <span class="marca">${esc(p.marca||'Preventa')}</span>
-        <span class="nombre">${esc(p.nombre)}</span>
-        ${rest!=null?`<span class="cupo-line ${full?'full':'left'}">${full?'Cupo lleno':'Quedan '+rest+' de '+p.cupo}</span>`:''}
-        ${p.fecha_estimada?`<span class="stk ok">Llega aprox: ${esc(p.fecha_estimada)}</span>`:''}
-        <div class="foot">
-          <span class="precio">${p.precio!=null&&p.precio!==''?`<small>Precio</small><b>${fmt(p.precio)}</b>`:'<small>Precio</small><b>Consultar</b>'}</span>
-          <span class="ver">→</span>
-        </div>
+  $('#preGrid').innerHTML = `
+    <div style="grid-column:1/-1;max-width:640px;margin:0 auto;width:100%">
+      <div class="marca" style="text-transform:uppercase;letter-spacing:.12em;font-size:.75rem;color:var(--gold-2);font-weight:700">Promoción</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:1.9rem;color:var(--cream);margin-top:2px">Pre Orden</div>
+      <div style="color:var(--muted);font-style:italic;margin-top:2px">Realiza tu pedido aquí</div>
+      <div style="color:var(--gold-1);font-size:.78rem;font-weight:700;letter-spacing:.08em;margin-top:16px;text-transform:uppercase">Incluye ${list.length} perfume${list.length!==1?'s':''}</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+        ${list.map(p => {
+          const main = imgsOf(p)[0]; const rest = cupoRestante(p);
+          const full = rest!=null && rest<=0;
+          const sub = [p.marca, p.descripcion].filter(Boolean).join(' · ');
+          return `<button class="np pre-row" data-pre="${p.id}" style="display:flex;align-items:center;gap:12px;width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;text-align:left;${full?'opacity:.55':''}">
+            <div style="width:42px;height:42px;border-radius:10px;overflow:hidden;background:var(--panel);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--muted)">${main?`<img src="${esc(main)}" style="width:100%;height:100%;object-fit:cover" alt="">`:esc((p.marca||p.nombre||'?')[0])}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:700;color:var(--cream)">${esc(p.nombre)}</div>
+              <div style="font-size:.78rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(sub||(full?'Cupo lleno':''))}</div>
+            </div>
+            <div style="color:var(--muted-2);font-size:.85rem;flex-shrink:0">${full?'lleno':'ver →'}</div>
+          </button>`;
+        }).join('')}
       </div>
-    </button>`;
-  }).join('');
-  document.querySelectorAll('#preGrid .card[data-pre]').forEach(c=>c.onclick=()=>openPre(c.dataset.pre));
-  const ab=$('#armarPreBtn'); if(ab) ab.onclick=()=>openPreLista();
+    </div>`;
+  document.querySelectorAll('#preGrid .pre-row').forEach(c=>c.onclick=()=>openPreLista(c.dataset.pre));
 }
 
 function openPre(id){
@@ -1006,7 +1003,7 @@ function preFilaHTML(p){
     ${(!lleno && tiers.length)?`<div class="genero" style="grid-column:1/-1;font-size:.78rem;margin-top:2px">📦 ${tiers.map(t=>`${t.min}+ · ${fmt(t.precio)} c/u`).join(' · ')}${cap?` · más de ${cap}: coordinar por WhatsApp`:''}</div>`:''}
   </div>`;
 }
-function openPreLista(){
+function openPreLista(focusId){
   const items = preListaDisponibles();
   if(!items.length){ toast('No hay perfumes en preventa disponibles'); return; }
   function draw(){
@@ -1040,6 +1037,7 @@ function openPreLista(){
     $('#preLFiles').onchange = async e => { const fs=[...e.target.files]; if(!fs.length)return; toast('Subiendo comprobante...');
       for(const f of fs){ const u=await subirComprobante(f); if(u) PRE_FILES.push({url:u}); } drawThumbs(); toast('Comprobante listo'); };
     $('#preLSend').onclick = enviarPreLista;
+    if(focusId){ const el=document.getElementById('preFila_'+focusId); if(el) setTimeout(()=>el.scrollIntoView({block:'center',behavior:'smooth'}),150); }
   }
   function drawThumbs(){ const el=$('#preLThumbs'); if(!el) return; el.innerHTML=PRE_FILES.map((u,i)=>`<div class="pt"><img src="${esc(u.url)}"><button data-rm="${i}">×</button></div>`).join('');
     el.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ PRE_FILES.splice(+b.dataset.rm,1); drawThumbs(); }); }
@@ -1852,10 +1850,8 @@ function openProduct(id){
       ${(pres.length===1) ? (()=>{
         const x=pres[0]; const cap=tierCapDe(p); const s=stockDe(p);
         const max = [s,cap].filter(v=>v!=null).length ? Math.min(...[s,cap].filter(v=>v!=null)) : 9999;
-        const tiers=tiersDe(p);
         return `
         <div class="qty-pick"><div class="stepper"><button id="qMinus">−</button><input class="qv" id="qVal" type="number" min="1" max="${max}" inputmode="numeric" value="1"><button id="qPlus">+</button></div><span style="color:var(--muted);font-size:.85rem" id="qTot"></span></div>
-        ${tiers.length?`<div class="genero" style="margin-top:6px;line-height:1.7">📦 <b>Precio por mayor:</b> ${tiers.map(t=>`${t.min}+ · ${fmt(t.precio)} c/u`).join(' &nbsp;·&nbsp; ')}${cap?` &nbsp;·&nbsp; más de ${cap}: <a href="https://wa.me/${CONFIG.WHATSAPP}" target="_blank" style="color:var(--gold-1)">coordinar por WhatsApp</a>`:''}</div>`:''}
         `;
       })() : ''}
 
@@ -1872,7 +1868,7 @@ function openProduct(id){
     const restanteStock = s!=null ? Math.max(0, s - qtyEnCarrito(p.id)) : null;
     const max = [restanteStock,cap].filter(v=>v!=null).length ? Math.min(...[restanteStock,cap].filter(v=>v!=null)) : 9999;
     let qty=1;
-    function precioQty(q){ const t=precioTierProducto(p,q); const base=(t!=null)?t:Number(x.precio); return window.PROMOS_ENGINE.precioUnit(p, x.ml, base, PROMOS).precio; }
+    function precioQty(q){ const totalConEste = unidadesCarrito()+q; const t=precioTierProducto(p,totalConEste); const base=(t!=null)?t:Number(x.precio); return window.PROMOS_ENGINE.precioUnit(p, x.ml, base, PROMOS).precio; }
     function refresh(){
       const unit=precioQty(qty);
       $('#qVal').value=qty; $('#qTot').textContent='';
