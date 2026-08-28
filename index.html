@@ -309,6 +309,9 @@ header::after{content:""; position:absolute; left:0; right:0; bottom:0; height:1
 .tier-chip.on{border-color:var(--gold-2); background:linear-gradient(180deg,var(--panel-2),var(--bg-2)); box-shadow:0 0 0 1px var(--gold-2) inset}
 .tier-chip .tc-n{font-size:.72rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.03em}
 .tier-chip .tc-p{font-size:.92rem; color:var(--cream); font-weight:700; margin-top:2px}
+.tier-chip.sm{flex:1 1 58px; min-width:58px; padding:7px 6px}
+.tier-chip.sm .tc-n{font-size:.62rem}
+.tier-chip.sm .tc-p{font-size:.78rem}
 .save-badge{display:inline-flex; align-items:center; gap:6px; background:linear-gradient(90deg,#12904a,#1db861); color:#fff; font-weight:700; font-size:.82rem; padding:8px 14px; border-radius:999px; margin-top:12px}
 .next-badge{display:inline-flex; align-items:center; gap:6px; background:var(--panel-2); border:1.5px dashed var(--gold-deep); color:var(--gold-1); font-weight:600; font-size:.8rem; padding:7px 13px; border-radius:999px; margin-top:10px}
 
@@ -335,6 +338,19 @@ header::after{content:""; position:absolute; left:0; right:0; bottom:0; height:1
 .entrega-form-card .ef-row{display:grid; grid-template-columns:1fr 1.4fr; gap:8px; margin-top:8px}
 .entrega-form-card .ef-row input,.entrega-form-card .ef-row select{margin-top:0}
 .entrega-form-card .ef-hint{font-size:.76rem; color:var(--muted); margin:8px 0 2px}
+
+/* ===== Tab "Precio por mayor" llamativo ===== */
+@keyframes tabPulse{0%,100%{box-shadow:0 0 0 0 rgba(20,20,22,.35)}50%{box-shadow:0 0 0 6px rgba(20,20,22,0)}}
+#tabMayor{animation:tabPulse 1.8s ease-in-out infinite; border-radius:999px!important}
+
+/* ===== Avisos superiores llamativos (mayoreo / preorden) ===== */
+.top-notice{position:relative; overflow:hidden; display:flex; align-items:center; gap:10px; justify-content:space-between; flex-wrap:wrap;
+  border-radius:14px; padding:11px 16px; margin:0 auto 10px; max-width:900px; color:#fff; cursor:pointer;
+  background:linear-gradient(100deg,#141416,#3b3b40,#141416); background-size:200% auto; animation:shimmerBar 3s linear infinite}
+.top-notice.pre{background:linear-gradient(100deg,#7a4a00,#d9a34a,#7a4a00); background-size:200% auto}
+.top-notice .tn-txt{font-size:.86rem; font-weight:600; display:flex; align-items:center; gap:8px}
+.top-notice .tn-ic{font-size:1.2rem; animation:bounceIcon 1.2s ease-in-out infinite}
+.top-notice .tn-btn{background:#fff; color:#141416; font-weight:700; font-size:.78rem; padding:6px 14px; border-radius:999px; white-space:nowrap}
 .pay-up{margin-top:6px; border:1px dashed var(--gold-deep); border-radius:12px; padding:14px; text-align:center; background:rgba(217,180,90,.06)}
 .pay-up label{display:block; font-size:.8rem; color:var(--gold-1); margin-bottom:8px; text-transform:none; letter-spacing:0}
 .pay-up input[type=file]{width:100%; font-size:.82rem; color:var(--muted)}
@@ -476,6 +492,7 @@ header::after{background:var(--line); opacity:1}
 </header>
 
 <div class="marquee" id="marquee"></div>
+<div id="topNotices" style="padding:10px 16px 0"></div>
 
 <section class="hero">
   <div class="hero-copy">
@@ -731,6 +748,12 @@ function baseItem(i){
 }
 /* Carrito con los precios base ya ajustados a mayorista, para el motor de promos */
 function pricedCart(){ return CART.map(i=>({ ...i, precio: baseItem(i) })); }
+/* Precio de lista real de un ítem del carrito (para mostrar tachado), sin importar el tramo activo */
+function precioListaDe(i){
+  const p = PROD_BY_ID[i.id];
+  if(p){ const x=(p.presentaciones||[]).find(pp=>pp.ml===i.ml); if(x) return Number(x.precio); }
+  return Number(i.unitOrig!=null ? i.unitOrig : i.precio);
+}
 
 /* Helpers de datos */
 function presActivas(p){ return (p.presentaciones||[]).filter(x=>x&&x.activo!==false&&Number(x.precio)>0).sort((a,b)=>Number(a.precio)-Number(b.precio)); }
@@ -790,7 +813,7 @@ async function load(){
   renderFilters(); render(); renderCombos(); renderPre(); renderCon();
 
   // Mostrar/ocultar pestañas según lo que haya cargado
-  const mayorHay = MAYOR_MIN>0;
+  const mayorHay = PRODUCTS.some(p=>tiersDe(p).length>0);
   const anyTab = mayorHay || COMBOS.length || PREORDENES.length || CONSOLIDADOS.length;
   const vt=$('#viewtabs'); if(vt) vt.style.display = anyTab ? 'flex' : 'none';
   const tm=$('#tabMayor'); if(tm) tm.style.display = mayorHay ? 'inline-flex' : 'none';
@@ -798,6 +821,7 @@ async function load(){
   const tpr=$('#tabPre'); if(tpr) tpr.style.display = PREORDENES.length ? 'inline-flex' : 'none';
   const tc=$('#tabCon'); if(tc) tc.style.display = CONSOLIDADOS.length ? 'inline-flex' : 'none';
   const sbBar=$('#statusBar'); if(sbBar) sbBar.style.display = (PREORDENES.length||CONSOLIDADOS.length) ? 'flex' : 'none';
+  renderTopNotices(mayorHay);
 
   // Modo diagnóstico: abre el catálogo con  ?debug  al final de la URL
   if(/[?&]debug/i.test(location.search)){
@@ -824,6 +848,20 @@ async function load(){
 function tallasActivas(c){ return (c.tallas||[]).filter(t=>t&&t.activo!==false&&Number(t.precio)>0).sort((a,b)=>Number(a.precio)-Number(b.precio)); }
 function comboDesde(c){ const t=tallasActivas(c); return t.length?Number(t[0].precio):null; }
 function comboAntesDesde(c){ const t=tallasActivas(c); if(!t.length) return null; const a=Number(t[0].antes); return (a&&a>Number(t[0].precio))?a:null; }
+
+function renderTopNotices(mayorHay){
+  const el=$('#topNotices'); if(!el) return;
+  let html='';
+  if(mayorHay){
+    html += `<div class="top-notice" id="noticeMayor"><div class="tn-txt"><span class="tn-ic">📦</span>PRECIOS POR MAYOR activos — mejores precios desde varias unidades</div><span class="tn-btn">Ver catálogo →</span></div>`;
+  }
+  if(PREORDENES.length){
+    html += `<div class="top-notice pre" id="noticePre"><div class="tn-txt"><span class="tn-ic">✈️</span>PREORDEN abierta — arma tu pedido y aparta tus perfumes</div><span class="tn-btn">Ver preorden →</span></div>`;
+  }
+  el.innerHTML = html;
+  const nm=$('#noticeMayor'); if(nm) nm.onclick=()=>{ setView('mayor'); renderMayor(); window.scrollTo({top:0,behavior:'smooth'}); };
+  const np=$('#noticePre'); if(np) np.onclick=()=>{ setView('preorden'); window.scrollTo({top:0,behavior:'smooth'}); };
+}
 
 function setView(v){
   currentView=v;
@@ -861,7 +899,7 @@ function renderMayor(){
         <div class="foot"><span class="precio"><small>Desde ${t0.min} unid.</small><b>${fmt(t0.precio)}</b></span><span class="ver">→</span></div>
       </div></button>`;
   }).join('');
-  cont.querySelectorAll('.card').forEach(c=>c.onclick=()=>openProduct(c.dataset.id));
+  cont.querySelectorAll('.card').forEach(c=>c.onclick=()=>openProduct(c.dataset.id,'mayor'));
 }
 
 function renderCombos(){
@@ -1016,6 +1054,7 @@ const MAYOR_TOPE_PRE = Number(CONFIG.MAYOR_TOPE_PREORDEN)||1000;
 function tierCapPreDe(p){ return tiersDe(p).length ? MAYOR_TOPE_PRE : null; }
 let PRE_CART = {}; // { preorden_id: qty }
 let PRE_FILES = [];
+let PRE_PAGO_MODO = 'foto'; // 'foto' | 'whatsapp'
 function preListaDisponibles(){ return PREORDENES.filter(p=>{ const r=cupoRestante(p); return r==null || r>0; }); }
 function preItemMax(p){
   const r=cupoRestante(p); const cap=tierCapPreDe(p);
@@ -1034,15 +1073,22 @@ function preFilaHTML(p){
   const main=imgsOf(p)[0]; const q=PRE_CART[p.id]||0; const max=preItemMax(p);
   const unit=preItemPrecio(p,Math.max(q,1)); const tiers=tiersDe(p); const cap=tierCapPreDe(p);
   const rest=cupoRestante(p); const lleno=rest!=null&&rest<=0;
-  return `<div class="con-row" id="preFila_${p.id}" style="${lleno?'opacity:.5':''}">
-    <div class="cr-info" style="display:flex;align-items:center;gap:10px">
-      ${main?`<img src="${esc(main)}" style="width:38px;height:38px;border-radius:8px;object-fit:cover" alt="">`:''}
-      <div><b>${esc(p.nombre)}</b><span style="display:block;font-size:.78rem;color:var(--muted)">${esc(p.marca||'')}${rest!=null?(lleno?' · Cupo lleno':' · quedan '+rest):''}</span></div>
+  const chipsHtml = tiers.length ? `<div class="tier-chips" id="preChips_${p.id}" style="margin-top:8px">
+    <div class="tier-chip sm" data-pid="${p.id}" data-tqty="1"><div class="tc-n">1 unidad</div><div class="tc-p">${fmt(Number(p.precio)||0)}</div></div>
+    ${tiers.map(t=>`<div class="tier-chip sm" data-pid="${p.id}" data-tqty="${t.min}"><div class="tc-n">${t.min}+ unid.</div><div class="tc-p">${fmt(t.precio)}</div></div>`).join('')}
+  </div>` : '';
+  return `<div class="pre-item-card" id="preFila_${p.id}" style="border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--panel);${lleno?'opacity:.5':''}">
+    <div style="display:flex;align-items:center;gap:10px">
+      ${main?`<img src="${esc(main)}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0" alt="">`:''}
+      <div style="flex:1;min-width:0"><b>${esc(p.nombre)}</b><span style="display:block;font-size:.78rem;color:var(--muted)">${esc(p.marca||'')}${rest!=null?(lleno?' · Cupo lleno':' · quedan '+rest):''}</span></div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="cr-precio" data-price="${p.id}" style="font-weight:700;color:var(--cream)">${lleno?'':fmt(unit)}</div>
+        <div class="cr-sub" data-sub="${p.id}" style="font-size:.76rem;color:var(--muted)">${(q>0&&!lleno)?fmt(unit*q)+' total':''}</div>
+      </div>
     </div>
-    <div class="cr-precio" data-price="${p.id}">${lleno?'':fmt(unit)}</div>
-    ${lleno?'<div></div>':`<div class="stepper sm"><button data-pm="${p.id}">−</button><input class="qv" type="number" min="0" max="${max}" inputmode="numeric" data-pq="${p.id}" value="${q}"><button data-pp="${p.id}">+</button></div>`}
-    <div class="cr-sub" data-sub="${p.id}">${(q>0&&!lleno)?fmt(unit*q):''}</div>
-    ${(!lleno && tiers.length)?`<div class="genero" style="grid-column:1/-1;font-size:.78rem;margin-top:2px">📦 ${tiers.map(t=>`${t.min}+ · ${fmt(t.precio)} c/u`).join(' · ')}${cap?` · más de ${cap}: coordinar por WhatsApp`:''}</div>`:''}
+    ${lleno?'':`<div style="display:flex;justify-content:center;margin-top:10px"><div class="stepper sm"><button data-pm="${p.id}">−</button><input class="qv" type="number" min="0" max="${max}" inputmode="numeric" data-pq="${p.id}" value="${q}"><button data-pp="${p.id}">+</button></div></div>`}
+    ${lleno?'':chipsHtml}
+    ${(!lleno && cap)?`<div style="text-align:center;font-size:.72rem;color:var(--muted);margin-top:4px">Más de ${cap}: coordinar por WhatsApp</div>`:''}
   </div>`;
 }
 function openPreLista(focusId){
@@ -1059,27 +1105,50 @@ function openPreLista(focusId){
         <div id="preListaItems" style="margin-top:12px;display:flex;flex-direction:column;gap:12px">${items.map(preFilaHTML).join('')}</div>
         <div class="con-sum" style="margin-top:14px"><div class="cell"><small>Total</small><b id="preListaTotal">${fmt(total)}</b></div></div>
 
-        <div class="section-t">Tu comprobante de pago</div>
-        <div class="pay-up">
-          <label>Sube la foto de tu pago / depósito (obligatorio)</label>
-          <input id="preLFiles" type="file" accept="image/*" multiple>
-          <div class="pay-thumbs" id="preLThumbs"></div>
+        <div class="section-t">¿Cómo confirmas tu pago?</div>
+        <div class="entrega-toggle" style="display:flex;gap:10px">
+          <button class="np etg ${PRE_PAGO_MODO==='foto'?'on':''}" id="preModoFoto" style="flex:1;border-radius:14px;border:1.5px solid ${PRE_PAGO_MODO==='foto'?'var(--gold-2)':'var(--line)'};background:${PRE_PAGO_MODO==='foto'?'var(--gold-grad)':'var(--panel-2)'};color:${PRE_PAGO_MODO==='foto'?'#fff':'var(--cream)'}">
+            <span class="etg-ic">📎</span><span class="etg-t">Subir foto</span><span class="etg-s">de mi comprobante</span>
+          </button>
+          <button class="np etg ${PRE_PAGO_MODO==='whatsapp'?'on':''}" id="preModoWA" style="flex:1;border-radius:14px;border:1.5px solid ${PRE_PAGO_MODO==='whatsapp'?'var(--gold-2)':'var(--line)'};background:${PRE_PAGO_MODO==='whatsapp'?'var(--gold-grad)':'var(--panel-2)'};color:${PRE_PAGO_MODO==='whatsapp'?'#fff':'var(--cream)'}">
+            <span class="etg-ic">💬</span><span class="etg-t">Coordinar</span><span class="etg-s">el pago por WhatsApp</span>
+          </button>
         </div>
+        <div id="preModoBody" style="margin-top:10px"></div>
 
         ${entregaToggleHTML('pl')}
         <textarea id="preLNota" rows="2" placeholder="Nota (opcional)" style="margin-top:10px;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:8px;color:var(--cream);padding:9px 11px;font-family:inherit"></textarea>
 
-        <button class="add-cta" id="preLSend" style="margin-top:14px">Enviar preorden · ${fmt(total)}</button>
+        <button class="np" id="preLCompartir" style="margin-top:14px;width:100%;padding:12px;border-radius:14px;border:1.5px solid var(--gold-deep);background:var(--panel-2);color:var(--gold-1);font-weight:600">📸 Compartir captura de mi pedido</button>
+        <button class="add-cta" id="preLSend" style="margin-top:10px">Enviar preorden · ${fmt(total)}</button>
       </div>`;
     $('#closeSheet').onclick=closeProduct;
     wireEntregaToggle($('#sheet'), draw);
     renderEntregaForm('pl');
-    drawThumbs();
+    drawModoBody();
+    $('#preModoFoto').onclick=()=>{ PRE_PAGO_MODO='foto'; draw(); };
+    $('#preModoWA').onclick=()=>{ PRE_PAGO_MODO='whatsapp'; draw(); };
     wireStepper();
-    $('#preLFiles').onchange = async e => { const fs=[...e.target.files]; if(!fs.length)return; toast('Subiendo comprobante...');
-      for(const f of fs){ const u=await subirComprobante(f); if(u) PRE_FILES.push({url:u}); } drawThumbs(); toast('Comprobante listo'); };
+    $('#preLFiles') && ($('#preLFiles').onchange = async e => { const fs=[...e.target.files]; if(!fs.length)return; toast('Subiendo comprobante...');
+      for(const f of fs){ const u=await subirComprobante(f); if(u) PRE_FILES.push({url:u}); } drawThumbs(); toast('Comprobante listo'); });
     $('#preLSend').onclick = enviarPreLista;
+    $('#preLCompartir').onclick = compartirCapturaPreorden;
     if(focusId){ const el=document.getElementById('preFila_'+focusId); if(el) setTimeout(()=>el.scrollIntoView({block:'center',behavior:'smooth'}),150); }
+  }
+  function drawModoBody(){
+    const box=$('#preModoBody'); if(!box) return;
+    if(PRE_PAGO_MODO==='foto'){
+      box.innerHTML = `<div class="pay-up">
+        <label>Sube la foto de tu pago / depósito (obligatorio)</label>
+        <input id="preLFiles" type="file" accept="image/*" multiple>
+        <div class="pay-thumbs" id="preLThumbs"></div>
+      </div>`;
+      drawThumbs();
+      $('#preLFiles').onchange = async e => { const fs=[...e.target.files]; if(!fs.length)return; toast('Subiendo comprobante...');
+        for(const f of fs){ const u=await subirComprobante(f); if(u) PRE_FILES.push({url:u}); } drawThumbs(); toast('Comprobante listo'); };
+    } else {
+      box.innerHTML = `<div class="genero" style="background:var(--panel-2);border-radius:12px;padding:12px;font-size:.85rem;line-height:1.5">💬 Al enviar tu preorden, te contactaremos por WhatsApp para coordinar tu pago. No necesitas subir comprobante ahora.</div>`;
+    }
   }
   function drawThumbs(){ const el=$('#preLThumbs'); if(!el) return; el.innerHTML=PRE_FILES.map((u,i)=>`<div class="pt"><img src="${esc(u.url)}"><button data-rm="${i}">×</button></div>`).join('');
     el.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ PRE_FILES.splice(+b.dataset.rm,1); drawThumbs(); }); }
@@ -1090,7 +1159,12 @@ function openPreLista(focusId){
     items.forEach(p=>{
       const q=PRE_CART[p.id]||0; const unit=preItemPrecio(p,Math.max(q,1));
       const pr=document.querySelector(`#preFila_${p.id} [data-price="${p.id}"]`); if(pr) pr.textContent=fmt(unit);
-      const sub=document.querySelector(`#preFila_${p.id} [data-sub="${p.id}"]`); if(sub) sub.textContent=q>0?fmt(unit*q):'';
+      const sub=document.querySelector(`#preFila_${p.id} [data-sub="${p.id}"]`); if(sub) sub.textContent=q>0?fmt(unit*q)+' total':'';
+      const tiers=tiersDe(p);
+      if(tiers.length){
+        let activeMin=1; tiers.forEach(t2=>{ if(q>=t2.min) activeMin=t2.min; });
+        document.querySelectorAll(`#preChips_${p.id} .tier-chip`).forEach(c=>c.classList.toggle('on', Number(c.dataset.tqty)===activeMin));
+      }
     });
   }
   function wireStepper(){
@@ -1109,6 +1183,11 @@ function openPreLista(focusId){
         if(v>max){ v=max; toast(max<9999?`Para más de ${max} unidades, coordina por WhatsApp`:'Cupo lleno'); inp.value=v; }
         PRE_CART[id]=v; refreshTotals(); };
     });
+    document.querySelectorAll('#preListaItems .tier-chip[data-pid]').forEach(c=>c.onclick=()=>{
+      const id=c.dataset.pid; const p=items.find(x=>x.id===id); const max=preItemMax(p);
+      let v=Number(c.dataset.tqty); if(v>max){ v=max; toast(max<9999?`Para más de ${max} unidades, coordina por WhatsApp`:'Cupo lleno'); }
+      PRE_CART[id]=v; const inp=document.querySelector(`[data-pq="${id}"]`); if(inp) inp.value=v; refreshTotals();
+    });
   }
   async function enviarPreLista(){
     const items2 = Object.keys(PRE_CART).filter(id=>PRE_CART[id]>0).map(id=>{
@@ -1116,10 +1195,11 @@ function openPreLista(focusId){
       return { preorden_id:id, nombre:p.nombre, qty, precio };
     });
     if(!items2.length){ toast('Elige al menos un perfume'); return; }
-    if(!PRE_FILES.length){ toast('Sube la foto de tu comprobante de pago'); return; }
+    if(PRE_PAGO_MODO==='foto' && !PRE_FILES.length){ toast('Sube la foto de tu comprobante de pago'); return; }
     if(!ENTREGA.modo){ toast('Elige cómo lo recibes: recojo o envío'); return; }
     if(!entregaValida()){ toast(ENTREGA.modo==='recojo'?'Pon tu nombre y celular':'Completa tus datos de envío'); return; }
-    const nota=($('#preLNota').value||'').trim();
+    const notaManual=($('#preLNota').value||'').trim();
+    const nota = (PRE_PAGO_MODO==='whatsapp' ? '[Coordinar pago por WhatsApp] ' : '') + notaManual;
     const total=preListaTotal();
     const entrega=entregaPayload();
     const nombre=ENTREGA.nombre||''; const tel=ENTREGA.celular||ENTREGA.telefono||'';
@@ -1135,11 +1215,23 @@ function openPreLista(focusId){
     items2.forEach(it=>{ msg+=`• ${enc2(it.nombre)} x${it.qty} = ${enc2(fmt(it.precio*it.qty))}%0A`; });
     msg+=`*Total: ${enc2(fmt(total))}*%0ACódigo: ${enc2(data)}`;
     msg+=entregaTextoWA();
+    if(PRE_PAGO_MODO==='whatsapp') msg+=`%0A%0A💬 Quiero coordinar mi pago por aquí.`;
     const waUrl=`https://wa.me/${CONFIG.WHATSAPP}?text=${msg}`;
     const itemsResumen = items2.map(it=>{ const p=items.find(x=>x.id===it.preorden_id); return { nombre:it.nombre, marca:p?p.marca:'', img:p?imgsOf(p)[0]:null, qty:it.qty, precio:it.precio }; });
-    PRE_CART={}; PRE_FILES=[];
+    PRE_CART={}; PRE_FILES=[]; PRE_PAGO_MODO='foto';
     mostrarResumenPedido({ titulo:'¡Preorden recibida!', codigo:data, subtexto:'Tu preorden quedó en revisión. Cuando confirmemos tu pago te avisaremos por WhatsApp. Guarda tu código para consultar el estado cuando quieras.', items:itemsResumen, total, entrega, waUrl });
     load();
+  }
+  async function compartirCapturaPreorden(){
+    const items2 = Object.keys(PRE_CART).filter(id=>PRE_CART[id]>0).map(id=>{
+      const p=items.find(x=>x.id===id); const qty=PRE_CART[id]; const precio=preItemPrecio(p,qty);
+      return { nombre:p.nombre, marca:p.marca, img:imgsOf(p)[0], qty, precio };
+    });
+    if(!items2.length){ toast('Elige al menos un perfume para compartir tu pedido'); return; }
+    const total=preListaTotal();
+    const entrega = ENTREGA.modo ? entregaPayload() : null;
+    window._volverDraw = draw;
+    mostrarCapturaPrevia({ titulo:'Mi preorden', items:items2, total, entrega });
   }
   draw();
   $('#overlay').classList.add('open'); document.body.style.overflow='hidden';
@@ -1563,6 +1655,22 @@ async function compartirImagenPedido(){
     toast('Imagen descargada 📸');
   }, 'image/png');
 }
+function mostrarCapturaPrevia(opts){
+  const volverA = window._volverDraw; // función para regresar a la pantalla que llamó esto
+  $('#sheet').innerHTML = `<div class="hd" style="padding:22px 24px"><button class="close" id="closeSheet"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button></div>
+    <div class="bd">
+      <div style="text-align:center;font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--cream)">📸 Comparte tu pedido</div>
+      <p style="text-align:center;color:var(--muted);font-size:.86rem;margin-top:6px">Genera una imagen con tu pedido para enviarla por WhatsApp o guardarla.</p>
+      <div style="margin-top:16px">${resumenPedidoHTML(opts)}</div>
+      <button class="add-cta" id="btnCompartirImg" style="margin-top:16px">📸 Compartir / descargar imagen</button>
+      <button class="np" id="btnVolverDraft" style="margin-top:10px;padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);color:var(--gold-1);width:100%">← Volver a mi pedido</button>
+    </div>`;
+  $('#closeSheet').onclick=()=>{ if(volverA) volverA(); else closeProduct(); };
+  $('#btnVolverDraft').onclick=()=>{ if(volverA) volverA(); else closeProduct(); };
+  $('#btnCompartirImg').onclick=compartirImagenPedido;
+  $('#overlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+
 function mostrarResumenPedido(opts){
   $('#sheet').innerHTML = `<div class="hd" style="padding:22px 24px"><button class="close" id="closeSheet"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button></div>
     <div class="bd">
@@ -1904,10 +2012,10 @@ function render(){
 }
 
 /* ================= Modal producto ================= */
-let selSize=null, curProduct=null;
-function openProduct(id){
+let selSize=null, curProduct=null, curView='unitario';
+function openProduct(id, view){
   const p = PROD_BY_ID[id]; if(!p) return;
-  curProduct = p; selSize = null;
+  curProduct = p; selSize = null; curView = view||'unitario';
   const notas = NOTAS_BY_PROD[id] || [];
   const imgs = imgsOf(p);
   const mainImg = imgs[0];
@@ -1939,7 +2047,7 @@ function openProduct(id){
           ${p.ocasion?`<div class="p"><div class="k">Ocasión</div><div class="v">${esc(p.ocasion)}</div></div>`:''}
         </div>` : ''}
 
-      <div class="section-t">${pres.length>1?'Seleccionar presentación':(tiersDe(p).length?'Precio por unidad':'Cantidad')}</div>
+      <div class="section-t">${pres.length>1?'Seleccionar presentación':(curView==='mayor'?'Elige tu cantidad por mayor':'Cantidad')}</div>
       <div class="tallas" id="tallas">
         ${pres.length>1 ? pres.map(x=>{
           const ef = precioEfectivo(p,x);
@@ -1956,19 +2064,36 @@ function openProduct(id){
           </button>`;
         }).join('') : (pres.length ? '' : '<div class="v" style="color:var(--muted)">Precios a consultar por WhatsApp.</div>')}
       </div>
-      ${(pres.length===1) ? (()=>{
-        const x=pres[0]; const cap=tierCapDe(p); const s=stockDe(p);
-        const max = [s,cap].filter(v=>v!=null).length ? Math.min(...[s,cap].filter(v=>v!=null)) : 9999;
-        const tiers=tiersDe(p);
-        const chipsHtml = tiers.length ? `<div class="tier-chips" id="tierChips">
-          <div class="tier-chip" data-tqty="1"><div class="tc-n">1 unidad</div><div class="tc-p">${fmt(Number(x.precio))}</div></div>
-          ${tiers.map(t=>`<div class="tier-chip" data-tqty="${t.min}"><div class="tc-n">${t.min}+ unid.</div><div class="tc-p">${fmt(t.precio)}</div></div>`).join('')}
-        </div>` : '';
+      ${(pres.length===1 && curView!=='mayor') ? (()=>{
+        const x=pres[0]; const tiers=tiersDe(p);
         return `
-        <div id="precioGrande" style="font-family:'Cormorant Garamond',serif;font-size:2.1rem;color:var(--cream);text-align:center;margin:6px 0 2px"></div>
-        <div class="qty-pick"><div class="stepper"><button id="qMinus">−</button><input class="qv" id="qVal" type="number" min="1" max="${max}" inputmode="numeric" value="1"><button id="qPlus">+</button></div></div>
-        ${chipsHtml}
+        <div id="precioGrande" style="font-family:'Cormorant Garamond',serif;font-size:2.1rem;color:var(--cream);text-align:center;margin:6px 0 2px">${fmt(Number(x.precio))}</div>
+        ${tiers.length?`<button class="mayor-banner" id="irMayorBtn" style="width:100%;border:none;cursor:pointer;justify-content:center">
+          <span class="mb-ic">🎯</span><span class="mb-txt">¿Quieres <b>más de uno</b>? En <b>Precio por Mayor</b> tienes mejores precios desde ${tiers[0].min} unidades →</span>
+        </button>`:''}
+        `;
+      })() : ''}
+      ${(pres.length===1 && curView==='mayor') ? (()=>{
+        const x=pres[0]; const cap=tierCapDe(p); const s=stockDe(p);
+        const restanteStock = s!=null ? Math.max(0, s - qtyEnCarrito(p.id)) : null;
+        const max = [restanteStock,cap].filter(v=>v!=null).length ? Math.min(...[restanteStock,cap].filter(v=>v!=null)) : 9999;
+        const tiers=tiersDe(p);
+        if(!tiers.length) return '<div class="v" style="color:var(--muted)">Este perfume aún no tiene precio por mayor configurado.</div>';
+        return `
+        <div class="tier-cards" id="tierCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-top:10px">
+          ${tiers.map((t,i)=>`<div class="tier-card" data-tmin="${t.min}" style="position:relative;border:1.5px solid var(--line);border-radius:14px;padding:14px 10px;text-align:center;background:var(--panel-2);cursor:pointer">
+            ${i===0?'<div style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--gold-grad);color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.05em;padding:2px 9px;border-radius:999px;white-space:nowrap">RECOMENDADO</div>':''}
+            <div class="tc-radio" style="width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line);margin:0 auto 8px"></div>
+            <div style="font-size:.76rem;color:var(--muted)">${t.min}+ unidades</div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:var(--cream);margin-top:2px">${fmt(t.precio)}</div>
+          </div>`).join('')}
+        </div>
+        <div class="qty-pick" style="margin-top:16px"><div class="stepper"><button id="qMinus">−</button><input class="qv" id="qVal" type="number" min="${tiers[0].min}" max="${max}" inputmode="numeric" value="${tiers[0].min}"><button id="qPlus">+</button></div></div>
         <div style="text-align:center" id="badgeArea"></div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button class="add-cta" id="addBtnMayor" style="margin-top:0;flex:1">Agregar al carrito</button>
+          <button class="add-cta" id="comprarAhoraBtn" style="margin-top:0;flex:1;background:var(--panel-2);color:var(--cream);border:1.5px solid var(--gold-2)">Comprar ahora</button>
+        </div>
         `;
       })() : ''}
 
@@ -1977,39 +2102,48 @@ function openProduct(id){
         <span>${esc(CONFIG.ENVIO_TEXTO||'')}</span>
       </div>
 
-      <button class="add-cta" id="addBtn" ${pres.length===1?'':'disabled'}>${agotado(p)?'Agotado':(pres.length===1?'Añadir al carrito':'Elige una presentación')}</button>
+      <button class="add-cta" id="addBtn" ${(pres.length===1&&curView!=='mayor')?'':'disabled'} style="${(pres.length===1&&curView==='mayor')?'display:none':''}">${agotado(p)?'Agotado':(pres.length>1?'Elige una presentación':'Añadir al carrito')}</button>
     </div>`;
 
-  if(pres.length===1 && !agotado(p)){
-    const x=pres[0]; const listPrice=precioEfectivo(p,x); const cap=tierCapDe(p); const s=stockDe(p);
+  if(pres.length===1 && curView!=='mayor' && !agotado(p)){
+    const x=pres[0];
+    selSize = { size:x.ml, price:Number(x.precio), may:0, qty:1 };
+    const ib=$('#irMayorBtn'); if(ib) ib.onclick=()=>{ closeProduct(); irAPrecioPorMayor(p.id); };
+  }
+
+  if(pres.length===1 && curView==='mayor' && !agotado(p)){
+    const x=pres[0]; const cap=tierCapDe(p); const s=stockDe(p);
     const restanteStock = s!=null ? Math.max(0, s - qtyEnCarrito(p.id)) : null;
     const max = [restanteStock,cap].filter(v=>v!=null).length ? Math.min(...[restanteStock,cap].filter(v=>v!=null)) : 9999;
     const tiers=tiersDe(p);
-    let qty=1;
+    let qty=tiers.length?tiers[0].min:1;
     function precioQty(q){ const totalConEste = unidadesCarrito()+q; const t=precioTierProducto(p,totalConEste); const base=(t!=null)?t:Number(x.precio); return window.PROMOS_ENGINE.precioUnit(p, x.ml, base, PROMOS).precio; }
     function refresh(){
       const unit=precioQty(qty);
       $('#qVal').value=qty;
-      $('#precioGrande').textContent = fmt(unit);
-      $('#addBtn').textContent = 'Añadir al carrito';
       selSize = { size:x.ml, price:unit, may:0, qty };
-      if(tiers.length){
-        const totalConEste = unidadesCarrito()+qty;
-        let activeMin = 1; tiers.forEach(t=>{ if(totalConEste>=t.min) activeMin=t.min; });
-        document.querySelectorAll('#tierChips .tier-chip').forEach(c=>c.classList.toggle('on', Number(c.dataset.tqty)===activeMin));
-      }
+      const totalConEste = unidadesCarrito()+qty;
+      let activeMin = tiers.length?tiers[0].min:0; tiers.forEach(t=>{ if(totalConEste>=t.min) activeMin=t.min; });
+      document.querySelectorAll('#tierCards .tier-card').forEach(c=>{
+        const on = Number(c.dataset.tmin)===activeMin;
+        c.style.borderColor = on?'var(--gold-2)':'var(--line)';
+        c.style.background = on?'linear-gradient(180deg,var(--panel-2),var(--bg-2))':'var(--panel-2)';
+        const radio=c.querySelector('.tc-radio'); if(radio) radio.style.background = on?'var(--gold-grad)':'transparent';
+      });
       const base1=Number(x.precio);
       let badges='';
       if(unit<base1){ const ahorroUnit=(base1-unit)*qty; badges += `<div class="save-badge">🎉 Ahorras ${fmt(ahorroUnit)} en total</div>`; }
-      const totalConEste = unidadesCarrito()+qty;
       const next = tiers.find(t=>t.min>totalConEste);
       if(next){ const faltan=next.min-totalConEste; badges += `<div class="next-badge">✨ Te faltan ${faltan} para pagar ${fmt(next.precio)} c/u</div>`; }
       $('#badgeArea').innerHTML = badges;
     }
-    $('#qMinus').onclick=()=>{ qty=Math.max(1,qty-1); refresh(); };
+    const minQty = tiers.length?tiers[0].min:1;
+    $('#qMinus').onclick=()=>{ qty=Math.max(minQty,qty-1); refresh(); };
     $('#qPlus').onclick=()=>{ if(qty>=max){ if(cap!=null&&qty>=cap) toast(`Para más de ${cap} unidades, coordina por WhatsApp`); else toast('No hay más stock disponible'); return; } qty++; refresh(); };
-    $('#qVal').oninput=()=>{ let v=parseInt(($('#qVal').value||'').replace(/[^\d]/g,''),10); if(isNaN(v)||v<1)v=1; if(v>max){ v=max; toast(cap!=null&&v>=cap?`Para más de ${cap} unidades, coordina por WhatsApp`:'No hay más stock disponible'); } qty=v; refresh(); };
-    if(tiers.length){ document.querySelectorAll('#tierChips .tier-chip').forEach(c=>c.onclick=()=>{ let v=Number(c.dataset.tqty); if(v>max){ v=max; toast(cap!=null&&v>=cap?`Para más de ${cap} unidades, coordina por WhatsApp`:'No hay más stock disponible'); } qty=v; refresh(); }); }
+    $('#qVal').oninput=()=>{ let v=parseInt(($('#qVal').value||'').replace(/[^\d]/g,''),10); if(isNaN(v)||v<minQty)v=minQty; if(v>max){ v=max; toast(cap!=null&&v>=cap?`Para más de ${cap} unidades, coordina por WhatsApp`:'No hay más stock disponible'); } qty=v; refresh(); };
+    document.querySelectorAll('#tierCards .tier-card').forEach(c=>c.onclick=()=>{ let v=Number(c.dataset.tmin); if(v>max){ v=max; toast(cap!=null&&v>=cap?`Para más de ${cap} unidades, coordina por WhatsApp`:'No hay más stock disponible'); } qty=v; refresh(); });
+    $('#addBtnMayor').onclick=addToCartOnly;
+    $('#comprarAhoraBtn').onclick=addToCart;
     refresh();
   }
 
@@ -2149,19 +2283,35 @@ function addComboToCart(){
 }
 
 /* ================= Carrito ================= */
-function addToCart(){
-  if(!curProduct || !selSize) return;
+function _addToCartCore(){
+  if(!curProduct || !selSize) return false;
   let addQty = selSize.qty||1;
   const s = stockDe(curProduct);
-  if(s!=null){ const restante = s - qtyEnCarrito(curProduct.id); if(restante<=0){ toast('No hay más stock disponible'); return; } if(addQty>restante) addQty=restante; }
+  if(s!=null){ const restante = s - qtyEnCarrito(curProduct.id); if(restante<=0){ toast('No hay más stock disponible'); return false; } if(addQty>restante) addQty=restante; }
   const key = curProduct.id + '_' + selSize.size;
   const found = CART.find(i=>i.key===key);
   if(found) found.qty += addQty;
   else CART.push({ key, id:curProduct.id, nombre:curProduct.nombre, marca:curProduct.marca, categoria:curProduct.categoria, img:imgsOf(curProduct)[0], ml:selSize.size, precio:selSize.price, precio_may:selSize.may||0, qty:addQty });
   saveCart();
+  return true;
+}
+function addToCartOnly(){
+  const p=curProduct, sz=selSize;
+  if(!_addToCartCore()) return;
   if(regaloDisponible()) toast('🎁 ¡Ganaste un regalo! Elígelo en tu pedido');
-  else toast(`Añadido: ${curProduct.nombre} (${mlLabel(selSize.size)})`);
+  else toast(`Añadido: ${p.nombre} (${mlLabel(sz.size)})`);
+  closeProduct();
+}
+function addToCart(){
+  const p=curProduct, sz=selSize;
+  if(!_addToCartCore()) return;
+  if(regaloDisponible()) toast('🎁 ¡Ganaste un regalo! Elígelo en tu pedido');
+  else toast(`Añadido: ${p.nombre} (${mlLabel(sz.size)})`);
   closeProduct(); openCart();
+}
+function irAPrecioPorMayor(id){
+  setView('mayor'); renderMayor();
+  setTimeout(()=>openProduct(id,'mayor'), 60);
 }
 function saveCart(){ localStorage.setItem('cart_'+CONFIG.TIENDA_NOMBRE, JSON.stringify(CART)); renderCart(); }
 
@@ -2242,7 +2392,7 @@ function renderCart(){
       <div class="info">
         <div class="n">${esc(i.nombre)}</div>
         <div class="m">${esc(i.marca||'')} · ${mlLabel(i.ml)}</div>
-        <div class="pr">${i.unit<i.unitOrig?`<span class="antes" style="color:var(--muted-2);text-decoration:line-through;margin-right:5px">${fmt(i.unitOrig)}</span>`:''}${fmt(i.unit)}${i.promo?` <span style="color:var(--ok);font-size:.72rem">· ${esc(i.promo)}</span>`:''}</div>
+        <div class="pr">${(()=>{ const listPrice=precioListaDe(i); return i.unit<listPrice?`<span class="antes" style="color:var(--muted-2);text-decoration:line-through;margin-right:5px">${fmt(listPrice)}</span>`:''; })()}${fmt(i.unit)}${i.promo?` <span style="color:var(--ok);font-size:.72rem">· ${esc(i.promo)}</span>`:''}</div>
         <div class="qty"><button data-dec="${i.key}">−</button><input class="qv" type="number" min="1" inputmode="numeric" data-qset="${i.key}" value="${i.qty}"><button data-inc="${i.key}">+</button></div>
       </div>
       <button class="rm" data-rm="${i.key}">Quitar</button>
