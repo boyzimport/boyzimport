@@ -120,6 +120,12 @@ header::after{content:""; position:absolute; left:0; right:0; bottom:0; height:1
 .card .precio b{font-family:'Cormorant Garamond',serif; font-weight:600; font-size:1.18rem; color:var(--gold-1)}
 .card .ver{width:34px; height:34px; border-radius:50%; border:1px solid var(--gold-deep); color:var(--gold-1); display:grid; place-items:center; font-size:1.05rem; transition:.22s; flex:0 0 auto}
 .card:hover .ver{background:var(--gold-grad); color:var(--bg); border-color:transparent}
+
+/* ===== Tarjetas de INICIO (botones de sección): imagen grande y CTA con color ===== */
+.inicio-sec-btn .imgwrap{aspect-ratio:16/10; padding:0; background:var(--bg-2)}
+.inicio-sec-btn .imgwrap img{width:100%; height:100%; max-height:none; object-fit:cover; filter:none}
+.inicio-sec-btn:hover .imgwrap img{transform:scale(1.04)}
+.inicio-sec-btn .entrar-cta{display:inline-flex; align-items:center; gap:5px; padding:7px 14px; border-radius:999px; background:var(--gold-grad); color:#fff!important; font-size:.78rem; font-weight:700; white-space:nowrap}
 .badge-dest{position:absolute; top:11px; left:11px; z-index:2; font-size:.6rem; letter-spacing:.16em; text-transform:uppercase; padding:5px 9px; border-radius:999px; background:color-mix(in srgb, var(--bg) 82%, transparent); border:1px solid var(--gold-deep); color:var(--gold-2)}
 .badge-off{position:absolute; top:11px; right:11px; z-index:2; font-size:.68rem; font-weight:700; padding:5px 9px; border-radius:999px; background:var(--danger); color:#fff}
 
@@ -928,7 +934,7 @@ function renderInicio(){
         <div class="imgwrap">${img?`<img src="${esc(img)}" alt="${esc(meta.label)}" loading="lazy">`:`<span class="ph" style="font-size:2.2rem">${meta.emoji}</span>`}</div>
         <div class="body">
           <span class="nombre">${esc(meta.label)}</span>
-          <div class="foot"><span class="ver" style="margin-left:auto">Entrar →</span></div>
+          <div class="foot"><span class="entrar-cta" style="margin-left:auto">Entrar →</span></div>
         </div>
       </button>`;
     }).join('');
@@ -2179,7 +2185,7 @@ function openProduct(id, view){
         <div style="text-align:center" id="badgeArea"></div>
         <div style="display:flex;gap:8px;margin-top:14px">
           <button class="add-cta" id="addBtnMayor" style="margin-top:0;flex:1">Agregar al carrito</button>
-          <button class="add-cta" id="comprarAhoraBtn" style="margin-top:0;flex:1;background:var(--panel-2);color:var(--cream);border:1.5px solid var(--gold-2)">Comprar ahora</button>
+          <button class="add-cta ghost" id="comprarAhoraBtn" style="margin-top:0;flex:1">Comprar ahora</button>
         </div>
         `;
       })() : ''}
