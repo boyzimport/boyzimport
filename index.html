@@ -123,8 +123,8 @@ header::after{content:""; position:absolute; left:0; right:0; bottom:0; height:1
 
 /* ===== Tarjetas de INICIO (botones de sección): imagen grande y CTA con color ===== */
 .inicio-sec-btn .imgwrap{aspect-ratio:16/10; padding:0; background:var(--bg-2)}
-.inicio-sec-btn .imgwrap img{width:100%; height:100%; max-height:none; object-fit:cover; filter:none}
-.inicio-sec-btn:hover .imgwrap img{transform:scale(1.04)}
+.inicio-sec-btn .imgwrap img{width:100%; height:100%; max-height:none; object-fit:contain; filter:none}
+.inicio-sec-btn:hover .imgwrap img{transform:scale(1.03)}
 .inicio-sec-btn .entrar-cta{display:inline-flex; align-items:center; gap:5px; padding:7px 14px; border-radius:999px; background:var(--gold-grad); color:#fff!important; font-size:.78rem; font-weight:700; white-space:nowrap}
 .badge-dest{position:absolute; top:11px; left:11px; z-index:2; font-size:.6rem; letter-spacing:.16em; text-transform:uppercase; padding:5px 9px; border-radius:999px; background:color-mix(in srgb, var(--bg) 82%, transparent); border:1px solid var(--gold-deep); color:var(--gold-2)}
 .badge-off{position:absolute; top:11px; right:11px; z-index:2; font-size:.68rem; font-weight:700; padding:5px 9px; border-radius:999px; background:var(--danger); color:#fff}
@@ -1155,7 +1155,6 @@ function preFilaHTML(p){
   const unit=preItemPrecio(p,Math.max(q,1)); const tiers=tiersDe(p); const cap=tierCapPreDe(p);
   const rest=cupoRestante(p); const lleno=rest!=null&&rest<=0;
   const chipsHtml = tiers.length ? `<div class="tier-chips" id="preChips_${p.id}" style="margin-top:8px">
-    <div class="tier-chip sm" data-pid="${p.id}" data-tqty="1"><div class="tc-n">1 unidad</div><div class="tc-p">${fmt(Number(p.precio)||0)}</div></div>
     ${tiers.map(t=>`<div class="tier-chip sm" data-pid="${p.id}" data-tqty="${t.min}"><div class="tc-n">${t.min}+ unid.</div><div class="tc-p">${fmt(t.precio)}</div></div>`).join('')}
   </div>` : '';
   return `<div class="pre-item-card" id="preFila_${p.id}" style="border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--panel);${lleno?'opacity:.5':''}">
@@ -1251,17 +1250,22 @@ function openPreLista(focusId){
   }
   function wireStepper(){
     document.querySelectorAll('#preListaItems [data-pp]').forEach(b=>b.onclick=()=>{
-      const id=b.dataset.pp; const p=items.find(x=>x.id===id); const max=preItemMax(p);
+      const id=b.dataset.pp; const p=items.find(x=>x.id===id); const max=preItemMax(p); const tiers=tiersDe(p);
       const cur=PRE_CART[id]||0; if(cur>=max){ toast(max<9999?`Para más de ${max} unidades, coordina por WhatsApp`:'Cupo lleno'); return; }
-      PRE_CART[id]=cur+1; const inp=document.querySelector(`[data-pq="${id}"]`); if(inp) inp.value=PRE_CART[id]; refreshTotals();
+      const next = (cur===0 && tiers.length) ? tiers[0].min : cur+1;
+      PRE_CART[id]= next>max?max:next; const inp=document.querySelector(`[data-pq="${id}"]`); if(inp) inp.value=PRE_CART[id]; refreshTotals();
     });
     document.querySelectorAll('#preListaItems [data-pm]').forEach(b=>b.onclick=()=>{
-      const id=b.dataset.pm; PRE_CART[id]=Math.max(0,(PRE_CART[id]||0)-1);
+      const id=b.dataset.pm; const p=items.find(x=>x.id===id); const tiers=tiersDe(p);
+      const cur=PRE_CART[id]||0;
+      const next = (tiers.length && cur<=tiers[0].min) ? 0 : cur-1;
+      PRE_CART[id]=Math.max(0,next);
       const inp=document.querySelector(`[data-pq="${id}"]`); if(inp) inp.value=PRE_CART[id]; refreshTotals();
     });
     document.querySelectorAll('#preListaItems [data-pq]').forEach(inp=>{
-      inp.oninput=()=>{ const id=inp.dataset.pq; const p=items.find(x=>x.id===id); const max=preItemMax(p);
+      inp.oninput=()=>{ const id=inp.dataset.pq; const p=items.find(x=>x.id===id); const max=preItemMax(p); const tiers=tiersDe(p);
         let v=parseInt((inp.value||'').replace(/[^\d]/g,''),10); if(isNaN(v)||v<0)v=0;
+        if(tiers.length && v>0 && v<tiers[0].min) v=tiers[0].min;
         if(v>max){ v=max; toast(max<9999?`Para más de ${max} unidades, coordina por WhatsApp`:'Cupo lleno'); inp.value=v; }
         PRE_CART[id]=v; refreshTotals(); };
     });
