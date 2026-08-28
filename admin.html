@@ -172,6 +172,7 @@ img{display:block;max-width:100%}
       <button class="tab" data-tab="consolidado">Consolidado</button>
       <button class="tab" data-tab="accesos">Accesos</button>
       <button class="tab" data-tab="ventas">Ventas</button>
+      <button class="tab" data-tab="inicio">Inicio</button>
       <button class="tab" data-tab="ajustes">Ajustes</button>
     </div>
     <button class="btn ghost" id="installBtn" style="display:none">⤓ Instalar app</button>
@@ -225,6 +226,17 @@ img{display:block;max-width:100%}
     <div id="ventasResumen"></div>
     <div id="ventasStock"></div>
     <div class="list" id="listVentas"></div>
+  </section>
+
+  <section id="tab-inicio" style="display:none">
+    <div class="bar"><h3 style="font-family:'Cormorant Garamond',serif;font-size:1.4rem">Inicio del catálogo</h3></div>
+    <div style="color:var(--muted);font-size:.9rem;margin-bottom:14px">El cliente ve esta pantalla al entrar. Pon una imagen a cada botón de sección, y agrega banners de ofertas o promos que quieras destacar.</div>
+
+    <h4 style="margin:6px 0 8px">Imagen de cada botón de sección</h4>
+    <div id="inicioSeccionesList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px"></div>
+
+    <div class="bar"><h4 style="margin:0">Banners de ofertas / promos</h4><button class="btn" id="newBanner" style="margin-left:auto">+ Nuevo banner</button></div>
+    <div id="bannersList" style="margin-top:10px"></div>
   </section>
 
   <section id="tab-ajustes" style="display:none">
@@ -291,6 +303,8 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   $('#tab-consolidado').style.display = t.dataset.tab==='consolidado'?'block':'none';
   $('#tab-accesos').style.display   = t.dataset.tab==='accesos'?'block':'none';
   if(t.dataset.tab==='accesos') loadAccesos();
+  $('#tab-inicio').style.display    = t.dataset.tab==='inicio'?'block':'none';
+  if(t.dataset.tab==='inicio') loadInicio();
   $('#tab-ventas').style.display   = t.dataset.tab==='ventas'?'block':'none';
   $('#tab-ajustes').style.display  = t.dataset.tab==='ajustes'?'block':'none';
 });
@@ -1688,6 +1702,102 @@ async function rechazarCambio(i){
   toast('Cambio rechazado'); loadAccesos();
 }
 
+
+/* ================= INICIO: imágenes de secciones + banners ================= */
+const INICIO_SECCIONES_DEF = [
+  { key:'catalogo', label:'Precio Unitario' },
+  { key:'mayor', label:'Precio por Mayor' },
+  { key:'promos', label:'Promociones' },
+  { key:'preorden', label:'Preorden' },
+  { key:'consolidado', label:'Consolidado' },
+];
+let INICIO_AJUSTES = {};
+let BANNERS = [];
+async function loadInicio(){
+  const ra = await sb.from('ajustes').select('*').eq('id','principal').maybeSingle();
+  INICIO_AJUSTES = (ra.data && ra.data.inicio_secciones) || {};
+  renderInicioSecciones();
+  const rb = await sb.from('inicio_banners').select('*').order('orden').order('created_at');
+  BANNERS = rb.error ? [] : (rb.data||[]);
+  renderBanners();
+}
+function renderInicioSecciones(){
+  const cont=$('#inicioSeccionesList'); if(!cont) return;
+  cont.innerHTML = INICIO_SECCIONES_DEF.map(s=>{
+    const url = INICIO_AJUSTES[s.key]||'';
+    return `<div style="display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:10px 12px">
+      <div style="width:52px;height:52px;border-radius:10px;overflow:hidden;background:var(--panel-2);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.7rem">${url?`<img src="${esc(url)}" style="width:100%;height:100%;object-fit:cover">`:'sin imagen'}</div>
+      <div style="flex:1"><b>${esc(s.label)}</b></div>
+      <input type="file" accept="image/*" data-secimg="${s.key}" style="max-width:180px">
+      ${url?`<button class="btn ghost" data-secdel="${s.key}" style="padding:6px 10px">Quitar</button>`:''}
+    </div>`;
+  }).join('');
+  cont.querySelectorAll('[data-secimg]').forEach(inp=>inp.onchange=async e=>{
+    const f=e.target.files[0]; if(!f) return;
+    toast('Subiendo...'); const url=await uploadImg(f,'inicio');
+    if(!url){ toast('No se pudo subir',true); return; }
+    INICIO_AJUSTES[inp.dataset.secimg]=url;
+    await guardarInicioSecciones();
+  });
+  cont.querySelectorAll('[data-secdel]').forEach(b=>b.onclick=async()=>{
+    delete INICIO_AJUSTES[b.dataset.secdel];
+    await guardarInicioSecciones();
+  });
+}
+async function guardarInicioSecciones(){
+  const { error } = await sb.from('ajustes').upsert({ id:'principal', inicio_secciones:INICIO_AJUSTES });
+  if(error){ toast('Error: '+error.message,true); return; }
+  toast('Guardado ✓'); renderInicioSecciones();
+}
+function renderBanners(){
+  const cont=$('#bannersList'); if(!cont) return;
+  if(!BANNERS.length){ cont.innerHTML='<div style="color:var(--muted)">Aún no hay banners.</div>'; return; }
+  cont.innerHTML = BANNERS.map((b,i)=>`<div style="display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;${b.activo===false?'opacity:.5':''}">
+    <div style="width:52px;height:52px;border-radius:10px;overflow:hidden;background:var(--panel-2);flex-shrink:0">${b.imagen_url?`<img src="${esc(b.imagen_url)}" style="width:100%;height:100%;object-fit:cover">`:''}</div>
+    <div style="flex:1"><b>${esc(b.titulo)}</b><br><span style="color:var(--muted);font-size:.85rem">${esc(b.subtitulo||'')}${b.link_view?' · va a: '+esc(b.link_view):''}</span></div>
+    <button class="btn ghost" data-bedit="${i}" style="padding:6px 10px">Editar</button>
+    <button class="btn danger" data-bdel="${i}" style="padding:6px 10px">Eliminar</button>
+  </div>`).join('');
+  cont.querySelectorAll('[data-bedit]').forEach(b=>b.onclick=()=>bannerForm(BANNERS[+b.dataset.bedit]));
+  cont.querySelectorAll('[data-bdel]').forEach(b=>b.onclick=async()=>{
+    const bn=BANNERS[+b.dataset.bdel]; if(!confirm('¿Eliminar este banner?')) return;
+    const { error } = await sb.from('inicio_banners').delete().eq('id',bn.id);
+    if(error){ toast('Error: '+error.message,true); return; }
+    toast('Eliminado'); loadInicio();
+  });
+}
+$('#newBanner') && ($('#newBanner').onclick=()=>bannerForm(null));
+function bannerForm(b){
+  b = b || {};
+  let imgUrl = b.imagen_url||'';
+  $('#modal').innerHTML = `
+    <h3>${b.id?'Editar':'Nuevo'} banner</h3>
+    <div class="field"><label>Imagen</label>
+      <div id="bImgPrev" style="width:100%;height:120px;border-radius:10px;overflow:hidden;background:var(--panel-2);margin-bottom:8px">${imgUrl?`<img src="${esc(imgUrl)}" style="width:100%;height:100%;object-fit:cover">`:''}</div>
+      <input type="file" accept="image/*" id="bImgFile">
+    </div>
+    <div class="field"><label>Título</label><input id="bTitulo" value="${esc(b.titulo||'')}" placeholder="Ej. 20% en toda la tienda"></div>
+    <div class="field"><label>Subtítulo (opcional)</label><input id="bSub" value="${esc(b.subtitulo||'')}" placeholder="Ej. Solo por esta semana"></div>
+    <div class="field"><label>Al tocarlo, llevar a…</label>
+      <select id="bLink">
+        <option value="">Ninguna sección</option>
+        ${INICIO_SECCIONES_DEF.map(s=>`<option value="${s.key}" ${b.link_view===s.key?'selected':''}>${esc(s.label)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field"><label>Orden</label><input id="bOrden" type="number" value="${b.orden??0}"></div>
+    <div class="field"><label>Visible</label><input type="checkbox" id="bActivo" ${b.activo!==false?'checked':''}></div>
+    <div class="actions"><button class="btn" id="bSave">Guardar</button><button class="btn ghost" id="bCancel">Cancelar</button></div>`;
+  $('#bImgFile').onchange=async e=>{ const f=e.target.files[0]; if(!f) return; toast('Subiendo...'); const u=await uploadImg(f,'inicio'); if(u){ imgUrl=u; $('#bImgPrev').innerHTML=`<img src="${esc(u)}" style="width:100%;height:100%;object-fit:cover">`; toast('Listo'); } };
+  $('#bCancel').onclick=closeOv;
+  $('#bSave').onclick=async()=>{
+    const titulo=$('#bTitulo').value.trim(); if(!titulo){ toast('Ponle un título',true); return; }
+    const payload={ titulo, subtitulo:$('#bSub').value.trim()||null, imagen_url:imgUrl||null, link_view:$('#bLink').value||null, orden:parseInt($('#bOrden').value)||0, activo:$('#bActivo').checked };
+    const { error } = b.id ? await sb.from('inicio_banners').update(payload).eq('id',b.id) : await sb.from('inicio_banners').insert(payload);
+    if(error){ toast('Error: '+error.message,true); return; }
+    toast('Guardado ✓'); closeOv(); loadInicio();
+  };
+  openOv();
+}
 
 let tt; function toast(m,bad){ const t=$('#toast'); t.textContent=m; t.className='toast show'+(bad?' bad':''); clearTimeout(tt); tt=setTimeout(()=>t.className='toast',2600); }
 
