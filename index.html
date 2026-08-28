@@ -301,6 +301,40 @@ header::after{content:""; position:absolute; left:0; right:0; bottom:0; height:1
 .qty-pick .stepper{display:inline-flex; align-items:center; gap:16px; background:var(--panel-2); border:1px solid var(--line); border-radius:999px; padding:6px 10px}
 .qty-pick .stepper button{width:28px; height:28px; color:var(--gold-2); font-size:1.15rem}
 .qty-pick .stepper span{min-width:26px; text-align:center; font-size:1.05rem}
+
+/* ===== Chips de precio por tramo (didácticos, clicables) ===== */
+.tier-chips{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
+.tier-chip{flex:1 1 70px; min-width:70px; padding:10px 8px; border-radius:12px; border:1.5px solid var(--line); background:var(--panel-2); text-align:center; transition:.18s; cursor:pointer}
+.tier-chip:hover{border-color:var(--gold-deep)}
+.tier-chip.on{border-color:var(--gold-2); background:linear-gradient(180deg,var(--panel-2),var(--bg-2)); box-shadow:0 0 0 1px var(--gold-2) inset}
+.tier-chip .tc-n{font-size:.72rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.03em}
+.tier-chip .tc-p{font-size:.92rem; color:var(--cream); font-weight:700; margin-top:2px}
+.save-badge{display:inline-flex; align-items:center; gap:6px; background:linear-gradient(90deg,#12904a,#1db861); color:#fff; font-weight:700; font-size:.82rem; padding:8px 14px; border-radius:999px; margin-top:12px}
+.next-badge{display:inline-flex; align-items:center; gap:6px; background:var(--panel-2); border:1.5px dashed var(--gold-deep); color:var(--gold-1); font-weight:600; font-size:.8rem; padding:7px 13px; border-radius:999px; margin-top:10px}
+
+/* ===== Banner "faltan X" en el carrito, animado y llamativo ===== */
+@keyframes shimmerBar{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+@keyframes bounceIcon{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.mayor-banner{position:relative; overflow:hidden; border-radius:14px; padding:13px 16px; margin:0 0 14px; display:flex; align-items:center; gap:10px;
+  background:linear-gradient(100deg,#141416,#3b3b40,#141416); background-size:200% auto; animation:shimmerBar 3s linear infinite; color:#fff}
+.mayor-banner .mb-ic{font-size:1.3rem; animation:bounceIcon 1.2s ease-in-out infinite}
+.mayor-banner .mb-txt{font-size:.86rem; font-weight:600; line-height:1.3}
+.mayor-banner .mb-txt b{color:#ffd76b}
+.mayor-banner.ok{background:linear-gradient(100deg,#0e6b37,#12904a,#0e6b37); background-size:200% auto}
+
+/* ===== Entrega: botones más ricos ===== */
+.entrega-toggle .etg{display:flex; flex-direction:column; align-items:center; gap:4px; padding:14px 10px!important}
+.entrega-toggle .etg .etg-ic{font-size:1.4rem}
+.entrega-toggle .etg .etg-t{font-weight:700; font-size:.86rem}
+.entrega-toggle .etg .etg-s{font-size:.68rem; opacity:.85; font-weight:400}
+.entrega-toggle .etg.on{box-shadow:0 4px 14px rgba(0,0,0,.15); transform:translateY(-1px)}
+.entrega-form-card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; margin-top:10px}
+.entrega-form-card input,.entrega-form-card select{width:100%; background:var(--bg); border:1px solid var(--line); border-radius:10px; color:var(--cream); padding:11px 13px; font-size:.9rem; outline:none; font-family:inherit; margin-top:8px; transition:.15s}
+.entrega-form-card input:first-child,.entrega-form-card select:first-child{margin-top:0}
+.entrega-form-card input:focus,.entrega-form-card select:focus{border-color:var(--gold-3)}
+.entrega-form-card .ef-row{display:grid; grid-template-columns:1fr 1.4fr; gap:8px; margin-top:8px}
+.entrega-form-card .ef-row input,.entrega-form-card .ef-row select{margin-top:0}
+.entrega-form-card .ef-hint{font-size:.76rem; color:var(--muted); margin:8px 0 2px}
 .pay-up{margin-top:6px; border:1px dashed var(--gold-deep); border-radius:12px; padding:14px; text-align:center; background:rgba(217,180,90,.06)}
 .pay-up label{display:block; font-size:.8rem; color:var(--gold-1); margin-bottom:8px; text-transform:none; letter-spacing:0}
 .pay-up input[type=file]{width:100%; font-size:.82rem; color:var(--muted)}
@@ -588,9 +622,13 @@ function cargarPeru(){
 function entregaToggleHTML(prefix){
   return `<div class="entrega-box" style="margin-top:14px">
     <div class="cliente-t">¿Cómo lo recibes?</div>
-    <div class="entrega-toggle" style="display:flex;gap:8px;margin-top:6px">
-      <button class="np etg" data-etg="recojo" data-p="${prefix}" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);background:${ENTREGA.modo==='recojo'?'var(--gold-grad)':'var(--panel-2)'};color:${ENTREGA.modo==='recojo'?'#fff':'var(--cream)'};font-weight:600">🏠 ${esc(CONFIG.RECOJO_LABEL||'Recojo en Santa Anita')}</button>
-      <button class="np etg" data-etg="envio" data-p="${prefix}" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);background:${ENTREGA.modo==='envio'?'var(--gold-grad)':'var(--panel-2)'};color:${ENTREGA.modo==='envio'?'#fff':'var(--cream)'};font-weight:600">📦 ${esc(CONFIG.ENVIO_LABEL||'Envío a todo el Perú')}</button>
+    <div class="entrega-toggle" style="display:flex;gap:10px;margin-top:8px">
+      <button class="np etg ${ENTREGA.modo==='recojo'?'on':''}" data-etg="recojo" data-p="${prefix}" style="flex:1;border-radius:14px;border:1.5px solid ${ENTREGA.modo==='recojo'?'var(--gold-2)':'var(--line)'};background:${ENTREGA.modo==='recojo'?'var(--gold-grad)':'var(--panel-2)'};color:${ENTREGA.modo==='recojo'?'#fff':'var(--cream)'}">
+        <span class="etg-ic">🏠</span><span class="etg-t">Recojo</span><span class="etg-s">${esc(CONFIG.RECOJO_LABEL||'Santa Anita')}</span>
+      </button>
+      <button class="np etg ${ENTREGA.modo==='envio'?'on':''}" data-etg="envio" data-p="${prefix}" style="flex:1;border-radius:14px;border:1.5px solid ${ENTREGA.modo==='envio'?'var(--gold-2)':'var(--line)'};background:${ENTREGA.modo==='envio'?'var(--gold-grad)':'var(--panel-2)'};color:${ENTREGA.modo==='envio'?'#fff':'var(--cream)'}">
+        <span class="etg-ic">📦</span><span class="etg-t">Envío</span><span class="etg-s">${esc(CONFIG.ENVIO_LABEL||'A todo el Perú')}</span>
+      </button>
     </div>
     <div id="${prefix}EntregaForm"></div>
   </div>`;
@@ -598,17 +636,19 @@ function entregaToggleHTML(prefix){
 function renderEntregaForm(prefix){
   const box=document.getElementById(prefix+'EntregaForm'); if(!box) return;
   if(ENTREGA.modo==='recojo'){
-    box.innerHTML = `<div class="miniform" style="margin-top:10px">
+    box.innerHTML = `<div class="entrega-form-card">
+      <div class="ef-hint">🏠 <b>${esc(CONFIG.RECOJO_LABEL||'Recojo en Santa Anita')}</b> — déjanos tus datos para coordinar la entrega</div>
       <input id="${prefix}RecNombre" placeholder="Nombre completo *" value="${esc(ENTREGA.nombre||'')}">
       <input id="${prefix}RecCel" placeholder="Celular *" inputmode="tel" value="${esc(ENTREGA.celular||'')}">
     </div>`;
     const n=document.getElementById(prefix+'RecNombre'); if(n) n.oninput=()=>ENTREGA.nombre=n.value;
     const c=document.getElementById(prefix+'RecCel'); if(c) c.oninput=()=>ENTREGA.celular=c.value;
   } else if(ENTREGA.modo==='envio'){
-    box.innerHTML = `<div class="miniform" style="margin-top:10px">
+    box.innerHTML = `<div class="entrega-form-card">
+      <div class="ef-hint">📦 Envío por <b>${esc(CONFIG.COURIER_NOMBRE||'Shalom')}</b> — recojo en agencia</div>
       <input id="${prefix}EnvNombre" placeholder="Nombre completo *" value="${esc(ENTREGA.nombre||'')}">
       <input id="${prefix}EnvCorreo" placeholder="Correo electrónico" type="email" value="${esc(ENTREGA.correo||'')}">
-      <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:8px">
+      <div class="ef-row">
         <select id="${prefix}EnvTipoDoc">
           <option value="DNI" ${ENTREGA.tipo_doc==='DNI'?'selected':''}>DNI</option>
           <option value="CE" ${ENTREGA.tipo_doc==='CE'?'selected':''}>Carné Ext.</option>
@@ -617,10 +657,12 @@ function renderEntregaForm(prefix){
         <input id="${prefix}EnvDoc" placeholder="Documento *" value="${esc(ENTREGA.documento||'')}">
       </div>
       <input id="${prefix}EnvTel" placeholder="Teléfono *" inputmode="tel" value="${esc(ENTREGA.telefono||'')}">
-      <div style="color:var(--muted);font-size:.8rem;margin:2px 0">Courier: ${esc(CONFIG.COURIER_NOMBRE||'Shalom')} — recojo en agencia</div>
+      <div class="ef-hint">Destino</div>
       <select id="${prefix}EnvDepto"><option value="">Departamento *</option></select>
-      <select id="${prefix}EnvProv" disabled><option value="">Provincia *</option></select>
-      <select id="${prefix}EnvDist" disabled><option value="">Distrito *</option></select>
+      <div class="ef-row">
+        <select id="${prefix}EnvProv" disabled><option value="">Provincia *</option></select>
+        <select id="${prefix}EnvDist" disabled><option value="">Distrito *</option></select>
+      </div>
       <input id="${prefix}EnvAgencia" placeholder="Dirección de la agencia ${esc(CONFIG.COURIER_NOMBRE||'Shalom')} donde recogerás *" value="${esc(ENTREGA.agencia||'')}">
     </div>`;
     const map={EnvNombre:'nombre',EnvCorreo:'correo',EnvTipoDoc:'tipo_doc',EnvDoc:'documento',EnvTel:'telefono',EnvAgencia:'agencia'};
@@ -808,15 +850,15 @@ function renderMayor(){
   const list = withMay.filter(p => !query || ((p.nombre||'')+' '+(p.marca||'')).toLowerCase().includes(query));
   if(!list.length){ cont.innerHTML = banner + `<div class="state">Aún no hay productos con precio por mayor.</div>`; return; }
   cont.innerHTML = banner + list.map(p=>{
-    const main=imgsOf(p)[0]; const pres=presActivas(p);
-    const uni=pres.length?Math.min(...pres.map(x=>Number(x.precio))):(Number(p.precio)||0);
+    const main=imgsOf(p)[0]; const tiers=tiersDe(p);
+    const t0=tiers[0]; // primer tramo (ej. 3+)
     return `<button class="card" data-id="${p.id}">
       <span class="badge-pre" style="background:#2f80c9">Por mayor 📦</span>
       <div class="imgwrap">${main?`<img src="${esc(main)}" alt="${esc(p.nombre)}" loading="lazy">`:`<span class="ph">${esc((p.nombre||'?')[0])}</span>`}</div>
       <div class="body">
         <span class="marca">${esc(p.marca||'')}</span>
         <span class="nombre">${esc(p.nombre)}</span>
-        <div class="foot"><span class="precio"><small>Precio</small><b>${fmt(uni)}</b></span><span class="ver">→</span></div>
+        <div class="foot"><span class="precio"><small>Desde ${t0.min} unid.</small><b>${fmt(t0.precio)}</b></span><span class="ver">→</span></div>
       </div></button>`;
   }).join('');
   cont.querySelectorAll('.card').forEach(c=>c.onclick=()=>openProduct(c.dataset.id));
@@ -1088,14 +1130,15 @@ function openPreLista(focusId){
     });
     if(error){ btn.disabled=false; btn.textContent=`Enviar preorden · ${fmt(total)}`; toast(error.message&&error.message.includes('SIN_CUPO')?'Ya no hay cupos suficientes en algún perfume':'No se pudo enviar. Intenta de nuevo'); return; }
     guardarCodigo(data);
-    PRE_CART={}; PRE_FILES=[];
-    okScreen('¡Preorden recibida!', data, 'Tu preorden quedó en revisión. Cuando confirmemos tu pago te avisaremos por WhatsApp. Guarda tu código para consultar el estado cuando quieras.');
     const enc2=s=>encodeURIComponent(s);
     let msg=`Hola ${enc2(CONFIG.TIENDA_NOMBRE)}! Hice una *PREORDEN*:%0A`;
     items2.forEach(it=>{ msg+=`• ${enc2(it.nombre)} x${it.qty} = ${enc2(fmt(it.precio*it.qty))}%0A`; });
     msg+=`*Total: ${enc2(fmt(total))}*%0ACódigo: ${enc2(data)}`;
     msg+=entregaTextoWA();
-    setTimeout(()=>{ if(confirm('¿Enviar también tu preorden por WhatsApp para confirmar más rápido?')) window.open(`https://wa.me/${CONFIG.WHATSAPP}?text=${msg}`,'_blank'); }, 300);
+    const waUrl=`https://wa.me/${CONFIG.WHATSAPP}?text=${msg}`;
+    const itemsResumen = items2.map(it=>{ const p=items.find(x=>x.id===it.preorden_id); return { nombre:it.nombre, marca:p?p.marca:'', img:p?imgsOf(p)[0]:null, qty:it.qty, precio:it.precio }; });
+    PRE_CART={}; PRE_FILES=[];
+    mostrarResumenPedido({ titulo:'¡Preorden recibida!', codigo:data, subtexto:'Tu preorden quedó en revisión. Cuando confirmemos tu pago te avisaremos por WhatsApp. Guarda tu código para consultar el estado cuando quieras.', items:itemsResumen, total, entrega, waUrl });
     load();
   }
   draw();
@@ -1472,6 +1515,72 @@ async function subirComprobante(file){
   }catch(e){ toast('No se pudo subir la imagen'); return null; }
 }
 function guardarCodigo(cod){ try{ const k='mispedidos_'+CONFIG.TIENDA_NOMBRE; const arr=JSON.parse(localStorage.getItem(k)||'[]'); arr.unshift(cod); localStorage.setItem(k, JSON.stringify([...new Set(arr)].slice(0,20))); }catch(e){} }
+/* ================= RESUMEN DE PEDIDO con imagen para compartir ================= */
+async function cargarHtml2Canvas(){
+  if(window.html2canvas) return window.html2canvas;
+  await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; s.onload=res; s.onerror=()=>rej(new Error('cdn')); document.head.appendChild(s); });
+  return window.html2canvas;
+}
+function entregaResumenTxt(entrega){
+  if(!entrega) return '';
+  if(entrega.modo==='recojo') return `🏠 Recojo en ${esc(CONFIG.RECOJO_NOMBRE||'Santa Anita')}<br>${esc(entrega.nombre||'')} · ${esc(entrega.celular||'')}`;
+  if(entrega.modo==='envio') return `📦 Envío ${esc(CONFIG.COURIER_NOMBRE||'Shalom')}<br>${esc(entrega.distrito||'')}, ${esc(entrega.provincia||'')}, ${esc(entrega.departamento||'')}<br>${esc(entrega.nombre||'')} · ${esc(entrega.telefono||'')}`;
+  return '';
+}
+function resumenPedidoHTML(opts){
+  const filas = (opts.items||[]).map(it=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #eee">
+      <div style="width:44px;height:44px;border-radius:10px;overflow:hidden;background:#f2f2f4;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#a0a0a8;font-size:.7rem">${it.img?`<img src="${esc(it.img)}" style="width:100%;height:100%;object-fit:cover">`:'—'}</div>
+      <div style="flex:1;min-width:0"><div style="font-weight:700;color:#141416">${esc(it.nombre)}</div><div style="font-size:.78rem;color:#6c6c74">${esc(it.marca||'')} · x${it.qty}</div></div>
+      <div style="font-weight:700;color:#141416;white-space:nowrap">${fmt(it.precio*it.qty)}</div>
+    </div>`).join('');
+  const entregaTxt = entregaResumenTxt(opts.entrega);
+  return `
+  <div id="reciboImg" style="background:#fff;border-radius:18px;padding:24px;max-width:420px;margin:0 auto;font-family:'Jost',system-ui,sans-serif">
+    <div style="text-align:center;font-family:'Cormorant Garamond',serif;font-size:1.5rem;color:#141416">${esc(CONFIG.TIENDA_NOMBRE||'')}</div>
+    <div style="text-align:center;color:#6c6c74;font-size:.8rem;margin-top:2px">${esc(opts.titulo||'Mi pedido')}</div>
+    ${opts.codigo?`<div style="text-align:center;margin-top:8px"><span style="background:#ededf0;padding:4px 12px;border-radius:999px;font-size:.8rem;color:#141416;font-weight:700">${esc(opts.codigo)}</span></div>`:''}
+    <div style="margin-top:16px">${filas}</div>
+    <div style="display:flex;justify-content:space-between;margin-top:14px;font-weight:700;font-size:1.1rem;color:#141416"><span>Total</span><span>${fmt(opts.total||0)}</span></div>
+    ${entregaTxt?`<div style="margin-top:14px;padding:12px;background:#f7f7f8;border-radius:12px;font-size:.82rem;color:#141416;line-height:1.5">${entregaTxt}</div>`:''}
+    <div style="text-align:center;color:#a0a0a8;font-size:.7rem;margin-top:16px">Gracias por tu compra 🤍</div>
+  </div>`;
+}
+async function compartirImagenPedido(){
+  let html2canvas; try{ html2canvas=await cargarHtml2Canvas(); }catch(e){ toast('No se pudo generar la imagen'); return; }
+  const el=document.getElementById('reciboImg'); if(!el) return;
+  toast('Generando imagen...');
+  let canvas; try{ canvas = await html2canvas(el, {scale:2, backgroundColor:'#ffffff'}); }catch(e){ toast('No se pudo generar la imagen'); return; }
+  canvas.toBlob(async (blob)=>{
+    if(!blob){ toast('No se pudo generar la imagen'); return; }
+    const file = new File([blob], 'pedido.png', {type:'image/png'});
+    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file], title:CONFIG.TIENDA_NOMBRE||'Mi pedido'}); return; }catch(e){ /* usuario canceló o falló: cae a descarga */ }
+    }
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='pedido.png'; a.click();
+    URL.revokeObjectURL(url);
+    toast('Imagen descargada 📸');
+  }, 'image/png');
+}
+function mostrarResumenPedido(opts){
+  $('#sheet').innerHTML = `<div class="hd" style="padding:22px 24px"><button class="close" id="closeSheet"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button></div>
+    <div class="bd">
+      <div style="text-align:center;font-size:2.4rem">✅</div>
+      <div style="text-align:center;font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--cream);margin-top:4px">${esc(opts.titulo||'¡Pedido recibido!')}</div>
+      ${opts.subtexto?`<p style="text-align:center;color:var(--muted);font-size:.86rem;margin-top:6px">${esc(opts.subtexto)}</p>`:''}
+      <div style="margin-top:16px">${resumenPedidoHTML(opts)}</div>
+      <button class="add-cta" id="btnCompartirImg" style="margin-top:16px">📸 Compartir imagen de mi pedido</button>
+      ${opts.waUrl?`<button class="wa" id="btnWaResumen" style="margin-top:10px"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.9-1.4A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1 1 12 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1a6.5 6.5 0 0 1-3.2-2.8c-.1-.2 0-.4.1-.5l.4-.5c.1-.1.1-.3 0-.4l-.7-1.7c-.2-.4-.4-.4-.5-.4h-.5c-.2 0-.4.1-.6.3-.7.7-.9 1.6-.6 2.6.5 1.6 1.6 3 3.2 3.9 2 1.1 3.3 1 4.2.9.6-.1 1.4-.6 1.6-1.2.2-.5.2-1 .1-1.1z"/></svg>Enviar por WhatsApp</button>`:''}
+      <button class="np" id="okClose2" style="margin-top:10px;padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);color:var(--gold-1);width:100%">Cerrar</button>
+    </div>`;
+  $('#closeSheet').onclick=closeProduct;
+  $('#okClose2').onclick=closeProduct;
+  $('#btnCompartirImg').onclick=compartirImagenPedido;
+  if(opts.waUrl){ $('#btnWaResumen').onclick=()=>window.open(opts.waUrl,'_blank'); }
+  $('#overlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+
 function okScreen(titulo, codigo, texto){
   $('#sheet').innerHTML = `<div class="hd" style="padding:22px 24px"><button class="close" id="closeSheet"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg></button></div>
     <div class="bd"><div class="ok-screen">
@@ -1830,7 +1939,7 @@ function openProduct(id){
           ${p.ocasion?`<div class="p"><div class="k">Ocasión</div><div class="v">${esc(p.ocasion)}</div></div>`:''}
         </div>` : ''}
 
-      <div class="section-t">${pres.length>1?'Seleccionar presentación':'Cantidad'}</div>
+      <div class="section-t">${pres.length>1?'Seleccionar presentación':(tiersDe(p).length?'Precio por unidad':'Cantidad')}</div>
       <div class="tallas" id="tallas">
         ${pres.length>1 ? pres.map(x=>{
           const ef = precioEfectivo(p,x);
@@ -1850,8 +1959,16 @@ function openProduct(id){
       ${(pres.length===1) ? (()=>{
         const x=pres[0]; const cap=tierCapDe(p); const s=stockDe(p);
         const max = [s,cap].filter(v=>v!=null).length ? Math.min(...[s,cap].filter(v=>v!=null)) : 9999;
+        const tiers=tiersDe(p);
+        const chipsHtml = tiers.length ? `<div class="tier-chips" id="tierChips">
+          <div class="tier-chip" data-tqty="1"><div class="tc-n">1 unidad</div><div class="tc-p">${fmt(Number(x.precio))}</div></div>
+          ${tiers.map(t=>`<div class="tier-chip" data-tqty="${t.min}"><div class="tc-n">${t.min}+ unid.</div><div class="tc-p">${fmt(t.precio)}</div></div>`).join('')}
+        </div>` : '';
         return `
-        <div class="qty-pick"><div class="stepper"><button id="qMinus">−</button><input class="qv" id="qVal" type="number" min="1" max="${max}" inputmode="numeric" value="1"><button id="qPlus">+</button></div><span style="color:var(--muted);font-size:.85rem" id="qTot"></span></div>
+        <div id="precioGrande" style="font-family:'Cormorant Garamond',serif;font-size:2.1rem;color:var(--cream);text-align:center;margin:6px 0 2px"></div>
+        <div class="qty-pick"><div class="stepper"><button id="qMinus">−</button><input class="qv" id="qVal" type="number" min="1" max="${max}" inputmode="numeric" value="1"><button id="qPlus">+</button></div></div>
+        ${chipsHtml}
+        <div style="text-align:center" id="badgeArea"></div>
         `;
       })() : ''}
 
@@ -1860,24 +1977,39 @@ function openProduct(id){
         <span>${esc(CONFIG.ENVIO_TEXTO||'')}</span>
       </div>
 
-      <button class="add-cta" id="addBtn" ${pres.length===1?'':'disabled'}>${agotado(p)?'Agotado':(pres.length===1?'Añadir':'Elige una presentación')}</button>
+      <button class="add-cta" id="addBtn" ${pres.length===1?'':'disabled'}>${agotado(p)?'Agotado':(pres.length===1?'Añadir al carrito':'Elige una presentación')}</button>
     </div>`;
 
   if(pres.length===1 && !agotado(p)){
     const x=pres[0]; const listPrice=precioEfectivo(p,x); const cap=tierCapDe(p); const s=stockDe(p);
     const restanteStock = s!=null ? Math.max(0, s - qtyEnCarrito(p.id)) : null;
     const max = [restanteStock,cap].filter(v=>v!=null).length ? Math.min(...[restanteStock,cap].filter(v=>v!=null)) : 9999;
+    const tiers=tiersDe(p);
     let qty=1;
     function precioQty(q){ const totalConEste = unidadesCarrito()+q; const t=precioTierProducto(p,totalConEste); const base=(t!=null)?t:Number(x.precio); return window.PROMOS_ENGINE.precioUnit(p, x.ml, base, PROMOS).precio; }
     function refresh(){
       const unit=precioQty(qty);
-      $('#qVal').value=qty; $('#qTot').textContent='';
-      $('#addBtn').textContent = `Añadir ${qty>1?'x'+qty+' · ':'· '}${fmt(unit*qty)}`;
+      $('#qVal').value=qty;
+      $('#precioGrande').textContent = fmt(unit);
+      $('#addBtn').textContent = 'Añadir al carrito';
       selSize = { size:x.ml, price:unit, may:0, qty };
+      if(tiers.length){
+        const totalConEste = unidadesCarrito()+qty;
+        let activeMin = 1; tiers.forEach(t=>{ if(totalConEste>=t.min) activeMin=t.min; });
+        document.querySelectorAll('#tierChips .tier-chip').forEach(c=>c.classList.toggle('on', Number(c.dataset.tqty)===activeMin));
+      }
+      const base1=Number(x.precio);
+      let badges='';
+      if(unit<base1){ const ahorroUnit=(base1-unit)*qty; badges += `<div class="save-badge">🎉 Ahorras ${fmt(ahorroUnit)} en total</div>`; }
+      const totalConEste = unidadesCarrito()+qty;
+      const next = tiers.find(t=>t.min>totalConEste);
+      if(next){ const faltan=next.min-totalConEste; badges += `<div class="next-badge">✨ Te faltan ${faltan} para pagar ${fmt(next.precio)} c/u</div>`; }
+      $('#badgeArea').innerHTML = badges;
     }
     $('#qMinus').onclick=()=>{ qty=Math.max(1,qty-1); refresh(); };
     $('#qPlus').onclick=()=>{ if(qty>=max){ if(cap!=null&&qty>=cap) toast(`Para más de ${cap} unidades, coordina por WhatsApp`); else toast('No hay más stock disponible'); return; } qty++; refresh(); };
     $('#qVal').oninput=()=>{ let v=parseInt(($('#qVal').value||'').replace(/[^\d]/g,''),10); if(isNaN(v)||v<1)v=1; if(v>max){ v=max; toast(cap!=null&&v>=cap?`Para más de ${cap} unidades, coordina por WhatsApp`:'No hay más stock disponible'); } qty=v; refresh(); };
+    if(tiers.length){ document.querySelectorAll('#tierChips .tier-chip').forEach(c=>c.onclick=()=>{ let v=Number(c.dataset.tqty); if(v>max){ v=max; toast(cap!=null&&v>=cap?`Para más de ${cap} unidades, coordina por WhatsApp`:'No hay más stock disponible'); } qty=v; refresh(); }); }
     refresh();
   }
 
@@ -2052,15 +2184,24 @@ function regaloDisponible(){
   });
 }
 
+/* Próximo tramo de precio que existe entre los perfumes que YA están en el carrito */
+function proximoTramoCarrito(){
+  const total = unidadesCarrito();
+  const mins = new Set();
+  CART.forEach(i=>{ const p=PROD_BY_ID[i.id]; if(p) tiersDe(p).forEach(t=>mins.add(t.min)); });
+  const arr = [...mins].sort((a,b)=>a-b);
+  const alcanzado = arr.filter(m=>m<=total).pop() || null;
+  const siguiente = arr.find(m=>m>total) || null;
+  return { total, tieneMayoreo: mins.size>0, alcanzado, siguiente };
+}
 function mayorBanner(){
-  if(!hayMayorEnCarrito()) return '';
-  const u=unidadesCarrito(), M=MAYOR_MIN, active=u>=M;
-  const lbl=(CONFIG.LABEL_MAYORISTA||'Precio por mayor');
-  let txt = active ? `✓ ${lbl} activado`
-    : (u===M-1 ? `¡Falta 1! Con un perfume más se activa el ${lbl.toLowerCase()}`
-    : `Faltan ${M-u} perfumes para el ${lbl.toLowerCase()}`);
-  const pct=Math.min(100, Math.round(u/Math.max(1,M)*100));
-  return `<div class="mayor-note ${active?'on':''}">${txt}<div class="bar"><i style="width:${pct}%"></i></div></div>`;
+  const { total, tieneMayoreo, siguiente } = proximoTramoCarrito();
+  if(!tieneMayoreo) return '';
+  if(siguiente){
+    const faltan = siguiente - total;
+    return `<div class="mayor-banner"><span class="mb-ic">🔥</span><span class="mb-txt">¡Te faltan <b>${faltan} perfume${faltan===1?'':'s'}</b> para bajar de precio!</span></div>`;
+  }
+  return `<div class="mayor-banner ok"><span class="mb-ic">🎉</span><span class="mb-txt">¡Ya tienes el <b>mejor precio</b> por mayor en tu pedido!</span></div>`;
 }
 function renderCart(){
   const n = CART.reduce((s,i)=>s+i.qty,0);
@@ -2206,7 +2347,10 @@ async function checkout(R){
   if(payMethod==='yape' && CONFIG.YAPE_NUMERO){
     msg += `%0A%0A💜 Pago por *Yape* a ${enc(CONFIG.YAPE_NUMERO)}${op?`%0AN° de operación: ${enc(op)}`:''}`;
   }
-  window.open(`https://wa.me/${CONFIG.WHATSAPP}?text=${msg}`, '_blank');
+  const waUrl = `https://wa.me/${CONFIG.WHATSAPP}?text=${msg}`;
+  const itemsResumen = R.lines.filter(i=>i.tipo!=='regalo').map(i=>({ nombre:i.nombre, marca:i.marca, img:i.img, qty:i.qty, precio:i.unit }));
+  CART=[]; saveCart();
+  mostrarResumenPedido({ titulo:'¡Pedido recibido!', subtexto:'Coordina tu pago y entrega por WhatsApp. Guarda o comparte tu pedido si quieres.', items:itemsResumen, total:R.total, entrega, waUrl });
 }
 
 /* ================= Buscador ================= */
